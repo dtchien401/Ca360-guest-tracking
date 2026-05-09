@@ -291,28 +291,15 @@ function shiftMonth(month, offset){
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0');
 }
 
-function getSelectedCutoffDay(rows){
-  if(getPeriod() === 'ALL') return 31;
-
-  let lastDay = 0;
-  rows.forEach(r => {
-    ['dailyMembership','dailyPt','dailyPtss','dailyGuest'].forEach(k => {
-      const arr = r[k] || [];
-      for(let i = 0; i < arr.length; i++) {
-        if(safeNumber(arr[i]) !== 0) lastDay = Math.max(lastDay, i + 1);
-      }
-    });
-  });
-
-  return lastDay || 31;
+function daysInMonth(month){
+  if(!month || month === 'ALL' || month === 'Unknown') return 31;
+  const parts = month.split('-');
+  if(parts.length < 2) return 31;
+  return new Date(Number(parts[0]), Number(parts[1]), 0).getDate();
 }
 
-function sumDailyToDate(rows, dailyKey, cutoffDay){
-  return rows.reduce((total,row)=>{
-    const arr = row[dailyKey] || [];
-    for(let i = 0; i < Math.min(cutoffDay, 31); i++) total += safeNumber(arr[i]);
-    return total;
-  },0);
+function pacingRatioForSelectedMonth(cutoffDay){
+  return Math.min(cutoffDay, daysInMonth(getPeriod())) / daysInMonth(getPeriod());
 }
 
 function getRowsForComparePeriod(){
@@ -388,7 +375,7 @@ function renderCards(rows){
   const nmu = sum(rows,'nmu');
 
   const targetTotalFullMonth = sum(rows,'target');
-  const pacingRatio = useDailyMTD ? cutoffDay / 31 : 1;
+  const pacingRatio = useDailyMTD ? pacingRatioForSelectedMonth(cutoffDay) : 1;
   const targetTotal = targetTotalFullMonth * pacingRatio;
   const targetMembership = targetTotal ? targetTotal * (membership / (total || 1)) : 0;
   const targetPt = targetTotal ? targetTotal * (pt / (total || 1)) : 0;
@@ -445,10 +432,12 @@ function renderCards(rows){
 }
 function renderCash(rows){
   const cutoffDay = getSelectedCutoffDay(rows);
+  const mode = getCompareMode();
   const current = getSameDayMetrics(rows, cutoffDay);
   const membership = current.membership;
   const pt = current.ptSales;
   const total = current.total;
+  const pacingRatio = getPeriod() !== 'ALL' ? pacingRatioForSelectedMonth(cutoffDay) : 1;
 
   const compareRows = getRowsForComparePeriod();
   const compare = compareRows ? getSameDayMetrics(compareRows, cutoffDay) : null;
@@ -463,14 +452,31 @@ function renderCash(rows){
     {label:'VAS', value:total * 0.03}
   ];
 
-  const compareRevenueLines = compare ? [
-    {label:'NMS', value:compare.membership},
-    {label:'PT', value:compare.ptSales},
-    {label:'Hypoxi', value:compare.total * 0.08},
-    {label:'Pilates', value:compare.total * 0.06},
-    {label:'Supplement', value:compare.total * 0.04},
-    {label:'VAS', value:compare.total * 0.03}
-  ] : null;
+  let compareRevenueLines = null;
+  if(compare){
+    compareRevenueLines = [
+      {label:'NMS', value:compare.membership},
+      {label:'PT', value:compare.ptSales},
+      {label:'Hypoxi', value:compare.total * 0.08},
+      {label:'Pilates', value:compare.total * 0.06},
+      {label:'Supplement', value:compare.total * 0.04},
+      {label:'VAS', value:compare.total * 0.03}
+    ];
+  }
+
+  if(mode === 'TARGET'){
+    const targetTotal = sum(rows,'target') * pacingRatio;
+    const targetNms = total ? targetTotal * (membership / total) : targetTotal * 0.55;
+    const targetPt = total ? targetTotal * (pt / total) : targetTotal * 0.45;
+    compareRevenueLines = [
+      {label:'NMS', value:targetNms},
+      {label:'PT', value:targetPt},
+      {label:'Hypoxi', value:targetTotal * 0.08},
+      {label:'Pilates', value:targetTotal * 0.06},
+      {label:'Supplement', value:targetTotal * 0.04},
+      {label:'VAS', value:targetTotal * 0.03}
+    ];
+  }
 
   const productDatasets = [{
     label:'Current',
@@ -488,10 +494,7 @@ function renderCash(rows){
 
   drawChart('cashMixChart',{
     type:'bar',
-    data:{
-      labels:currentRevenueLines.map(x=>x.label),
-      datasets:productDatasets
-    },
+    data:{labels:currentRevenueLines.map(x=>x.label),datasets:productDatasets},
     options:{
       responsive:true,
       plugins:{legend:{display:!!compareRevenueLines, position:'bottom'}},
@@ -499,14 +502,15 @@ function renderCash(rows){
     }
   });
 
-  const trendDatasets = [
-    {label:'NMS',data:trendSeries(rows,'membership'),tension:.35},
-    {label:'PT',data:trendSeries(rows,'ptSales'),tension:.35}
-  ];
-
   drawChart('cashTrendChart',{
     type:'line',
-    data:{labels:trendLabels(),datasets:trendDatasets},
+    data:{
+      labels:trendLabels(),
+      datasets:[
+        {label:'NMS',data:trendSeries(rows,'membership'),tension:.35},
+        {label:'PT',data:trendSeries(rows,'ptSales'),tension:.35}
+      ]
+    },
     options:{
       responsive:true,
       plugins:{legend:{position:'bottom'}},
@@ -525,13 +529,19 @@ function renderCash(rows){
     });
   }
 
+  if(mode === 'TARGET'){
+    rows.forEach(d=>{
+      compareByClub.set(d.club, safeNumber(d.target) * pacingRatio);
+    });
+  }
+
   const clubDatasets = [{
     label:'Current',
     data:topClubChart.map(d=>getSameDayMetrics([d], cutoffDay).total),
     borderRadius:10
   }];
 
-  if(compareRows){
+  if(compareRows || mode === 'TARGET'){
     clubDatasets.push({
       label:compareName,
       data:topClubChart.map(d=>compareByClub.get(d.club) || 0),
@@ -541,13 +551,10 @@ function renderCash(rows){
 
   drawChart('revClubChart',{
     type:'bar',
-    data:{
-      labels:topClubChart.map(d=>d.club),
-      datasets:clubDatasets
-    },
+    data:{labels:topClubChart.map(d=>d.club),datasets:clubDatasets},
     options:{
       responsive:true,
-      plugins:{legend:{display:!!compareRows, position:'bottom'}},
+      plugins:{legend:{display:(compareRows || mode === 'TARGET'), position:'bottom'}},
       scales:{
         x:{ticks:{autoSkip:false,maxRotation:60,minRotation:45}},
         y:{ticks:{callback:v=>money(v)}}
