@@ -266,6 +266,7 @@ function setupFilters(){
   refreshPeriodData();
   byId('applyBtn').addEventListener('click', renderDashboard);
   byId('periodFilter').addEventListener('change',()=>{ refreshPeriodData(); renderDashboard(); });
+  byId('compareFilter').addEventListener('change', renderDashboard);
   byId('regionFilter').addEventListener('change', renderDashboard);
   byId('clubFilter').addEventListener('change', renderDashboard);
   byId('searchClub').addEventListener('input', renderClubTable);
@@ -278,11 +279,92 @@ function setupFilters(){
     renderDashboard();
   }));
 }
+function getCompareMode(){
+  return byId('compareFilter').value || 'TARGET';
+}
+
+function shiftMonth(month, offset){
+  if(!month || month === 'ALL' || month === 'Unknown') return '';
+  const parts = month.split('-');
+  if(parts.length < 2) return '';
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1 + offset, 1);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0');
+}
+
+function getRowsForComparePeriod(){
+  const mode = getCompareMode();
+  const period = getPeriod();
+  if(mode === 'TARGET' || period === 'ALL') return null;
+
+  const compareMonth = mode === 'LM' ? shiftMonth(period, -1) : shiftMonth(period, -12);
+  if(!compareMonth) return null;
+
+  const region = byId('regionFilter').value;
+  const club = byId('clubFilter').value;
+  return aggregateByClub(allData.filter(r =>
+    r.month === compareMonth &&
+    (region === 'ALL' || r.region === region) &&
+    (club === 'ALL' || r.club === club)
+  ));
+}
+
+function compareLabel(currentValue, compareValue, targetModeText){
+  const mode = getCompareMode();
+
+  if(mode === 'TARGET'){
+    const rate = compareValue ? currentValue / compareValue : 0;
+    return {
+      text: targetModeText + ' ' + pct(rate),
+      badge: rate >= 1 ? 'badge-up' : rate >= 0.9 ? 'badge-neutral' : 'badge-down'
+    };
+  }
+
+  if(compareValue === null || compareValue === undefined || compareValue === 0){
+    return {text: mode === 'LM' ? 'No LM data' : 'No LY data', badge:'badge-neutral'};
+  }
+
+  const change = (currentValue - compareValue) / Math.abs(compareValue);
+  return {
+    text: (change >= 0 ? '+' : '') + pct(change) + (mode === 'LM' ? ' vs LM' : ' vs LY'),
+    badge: change >= 0 ? 'badge-up' : 'badge-down'
+  };
+}
+
 function renderCards(rows){
   const membership=sum(rows,'membership'), pt=sum(rows,'ptSales'), total=membership+pt, ptss=sum(rows,'ptss'), guest=sum(rows,'guest'), nmu=sum(rows,'nmu');
+  const targetTotal = sum(rows,'target');
+  const targetMembership = targetTotal ? targetTotal * (membership / (total || 1)) : 0;
+  const targetPt = targetTotal ? targetTotal * (pt / (total || 1)) : 0;
+  const targetPtss = ptss * 1.05;
+  const targetClose = guest * 0.22;
+
+  const compareRows = getRowsForComparePeriod();
+  const compareMembership = compareRows ? sum(compareRows,'membership') : targetMembership;
+  const comparePt = compareRows ? sum(compareRows,'ptSales') : targetPt;
+  const compareTotal = compareRows ? compareMembership + comparePt : targetTotal;
+  const comparePtss = compareRows ? sum(compareRows,'ptss') : targetPtss;
+  const compareGuest = compareRows ? sum(compareRows,'guest') : guest;
+  const compareNmu = compareRows ? sum(compareRows,'nmu') : targetClose;
+  const currentCloseRate = guest ? nmu / guest : 0;
+  const compareCloseRate = compareRows ? (compareGuest ? compareNmu / compareGuest : 0) : 0.22;
+
   byId('headerTotal').textContent = money(total);
   const periodText = getPeriod() === 'ALL' ? 'All Periods' : getPeriod();
-  const cards = [['Total Cash',money(total),periodText,'badge-up'],['Membership Sales',money(membership),pct(total?membership/total:0)+' mix','badge-neutral'],['PT Sales',money(pt),pct(total?pt/total:0)+' mix',pt/total>=0.42?'badge-up':'badge-neutral'],['PTSS Served',Math.round(ptss).toLocaleString(),'sessions','badge-up'],['Guest Close Rate',pct(guest?nmu/guest:0),Math.round(guest).toLocaleString()+' guests','badge-neutral']];
+
+  const totalCmp = compareLabel(total, compareTotal, 'Target');
+  const membershipCmp = compareLabel(membership, compareMembership, 'Target');
+  const ptCmp = compareLabel(pt, comparePt, 'Target');
+  const ptssCmp = compareLabel(ptss, comparePtss, 'Target');
+  const closeCmp = compareLabel(currentCloseRate, compareCloseRate, 'Target');
+
+  const cards = [
+    ['Total Cash',money(total),totalCmp.text,totalCmp.badge],
+    ['Membership Sales',money(membership),membershipCmp.text,membershipCmp.badge],
+    ['PT Sales',money(pt),ptCmp.text,ptCmp.badge],
+    ['PTSS Served',Math.round(ptss).toLocaleString(),ptssCmp.text,ptssCmp.badge],
+    ['Guest Close Rate',pct(currentCloseRate),closeCmp.text,closeCmp.badge]
+  ];
+
   byId('kpiCards').innerHTML = cards.map(c=>'<div class="card p-4"><div class="mini-label">'+c[0]+'</div><div class="metric mt-1">'+c[1]+'</div><span class="'+c[3]+' px-2 py-1 rounded-full text-xs font-bold">'+c[2]+'</span></div>').join('');
 }
 function renderCash(rows){
