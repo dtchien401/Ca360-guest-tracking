@@ -78,7 +78,7 @@
             <div>
               <div class="flex items-center justify-between mb-2">
                 <div class="text-sm font-bold text-gray-500">Revenue by Club</div>
-                <div class="text-xs text-gray-400">All active clubs, excluding VMC / LTC / JCQ</div>
+                <div class="text-xs text-gray-400">All clubs</div>
               </div>
               <canvas id="revClubChart" height="130"></canvas>
             </div>
@@ -331,10 +331,7 @@ function renderCash(rows){
     }
   });
 
-  const excludedClubCodes = new Set(['VMC','LTC','JCQ','TDY']);
-  const ranked=[...rows]
-    .filter(d=>!excludedClubCodes.has(String(d.club).toUpperCase()))
-    .sort((a,b)=>(b.membership+b.ptSales)-(a.membership+a.ptSales));
+  const ranked=[...rows].sort((a,b)=>(b.membership+b.ptSales)-(a.membership+a.ptSales));
 
   const topClubChart = ranked.filter(d=>(d.membership+d.ptSales)>0);
 
