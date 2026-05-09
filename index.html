@@ -33,6 +33,7 @@
             <div class="text-xs text-red-100 uppercase tracking-widest font-bold">Selected Period</div>
             <div class="text-3xl font-black mt-1" id="headerTotal">$0</div>
             <div class="text-sm text-red-50">Total NMS + PT Sales | USD</div>
+            <div id="dataStatus" class="text-xs text-red-100 mt-2">Loading Google Sheet data...</div>
           </div>
         </div>
       </div>
@@ -147,15 +148,50 @@ function normalizeApiRow(row,idx){
     dailyGuest: Array.isArray(row.dailyGuest) ? row.dailyGuest : makeDaily(guest,idx+1)
   };
 }
+function loadJsonp(url){
+  return new Promise((resolve,reject)=>{
+    const cbName = 'jsonpDashboardCallback_' + Date.now();
+    const script = document.createElement('script');
+    window[cbName] = data => { cleanup(); resolve(data); };
+    function cleanup(){ delete window[cbName]; script.remove(); }
+    script.onerror = () => { cleanup(); reject(new Error('JSONP load failed')); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName + '&mode=monthly&_=' + Date.now();
+    document.body.appendChild(script);
+  });
+}
+
+function setStatus(text){
+  const el = byId('dataStatus');
+  if(el) el.textContent = text;
+}
+
 async function loadData(){
   allData = mapFallbackData();
+  setStatus('Loading Google Sheet data...');
   try{
-    const res = await fetch(CONFIG.API_URL + '?mode=monthly', {method:'GET', cache:'no-store'});
-    const json = await res.json();
-    if(!json.success) throw new Error(json.message || 'API success=false');
-    allData = json.data.map(normalizeApiRow).filter(x=>x.club);
+    let json;
+    try{
+      const res = await fetch(CONFIG.API_URL + '?mode=monthly&_=' + Date.now(), {method:'GET', cache:'no-store'});
+      json = await res.json();
+    }catch(fetchErr){
+      console.warn('Fetch failed, trying JSONP fallback...', fetchErr);
+      json = await loadJsonp(CONFIG.API_URL);
+    }
+    if(!json || !json.success) throw new Error((json && json.message) || 'API success=false');
+
+    const sourceRows = Array.isArray(json.data) ? json.data : [];
+    allData = sourceRows.map(normalizeApiRow).filter(x=>x.club && x.month);
+
+    if(!allData.length){
+      throw new Error('API returned 0 usable rows. Check Code.gs mapping fields: month, club, membership, ptSales, ptss, guestMkt, guestClub, nmu.');
+    }
+
+    const months = Array.from(new Set(allData.map(d=>d.month))).sort();
+    const clubs = Array.from(new Set(allData.map(d=>d.club))).sort();
+    setStatus('Loaded from Google Sheet: ' + allData.length + ' rows | ' + months.length + ' periods | ' + clubs.length + ' clubs');
   }catch(err){
     console.error('Cannot load API. Using fallback data.', err);
+    setStatus('API failed, using fallback demo data. Open Console to see error.');
   }
 }
 
