@@ -78,7 +78,7 @@
             <div>
               <div class="flex items-center justify-between mb-2">
                 <div class="text-sm font-bold text-gray-500">Revenue by Club</div>
-                <div class="text-xs text-gray-400">All clubs</div>
+                <div class="text-xs text-gray-400" id="activeClubCountNote">Active clubs</div>
               </div>
               <canvas id="revClubChart" height="130"></canvas>
             </div>
@@ -552,11 +552,32 @@ function renderCash(rows){
     {label:'VAS', value:total * 0.03}
   ];
 
+  let lmRevenueLines = [];
+  if(compareMode === 'LM' && getPeriod() !== 'ALL'){
+    const lm = previousMonthString(getPeriod());
+    const lmRows = rowsForMonthWithCurrentFilters(lm);
+    const cutoff = lm ? sameDayCutoffForMonth(lm) : comparisonDayForSelectedPeriod();
+    const lmMembership = sumDailyToDay(lmRows,'dailyMembership',cutoff);
+    const lmPt = sumDailyToDay(lmRows,'dailyPt',cutoff);
+    const lmTotal = lmMembership + lmPt;
+    lmRevenueLines = [
+      {label:'NMS', value:lmMembership},
+      {label:'PT', value:lmPt},
+      {label:'Hypoxi', value:lmTotal * 0.08},
+      {label:'Pilates', value:lmTotal * 0.06},
+      {label:'Supplement', value:lmTotal * 0.04},
+      {label:'VAS', value:lmTotal * 0.03}
+    ];
+  }
+
   drawChart('cashMixChart',{
     type:'bar',
     data:{
       labels:revenueLines.map(x=>x.label),
-      datasets:[{
+      datasets: compareMode === 'LM' ? [
+        {type:'bar',label:'Current Month MTD',data:revenueLines.map(x=>x.value),borderRadius:14},
+        {type:'line',label:'Last Month Same-Day',data:lmRevenueLines.map(x=>x.value),tension:.25,borderWidth:2,pointRadius:4,spanGaps:true}
+      ] : [{
         label:'Revenue',
         data:revenueLines.map(x=>x.value),
         borderRadius:14
@@ -564,7 +585,7 @@ function renderCash(rows){
     },
     options:{
       responsive:true,
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:compareMode === 'LM', position:'bottom'}},
       scales:{y:{ticks:{callback:v=>money(v)}}}
     }
   });
@@ -612,8 +633,14 @@ function renderCash(rows){
   }
 
   const ranked=[...rows].sort((a,b)=>(b.membership+b.ptSales)-(a.membership+a.ptSales));
+  const activeRanked = ranked.filter(d =>
+    (d.membership + d.ptSales) > 0 &&
+    !CLOSED_CLUBS.includes(String(d.club).toUpperCase())
+  );
 
-  const topClubChart = ranked.filter(d=>(d.membership+d.ptSales)>0);
+  const topClubChart = activeRanked;
+  const countNote = byId('activeClubCountNote');
+  if(countNote) countNote.textContent = topClubChart.length + ' active clubs';
   const labels = topClubChart.map(d=>d.club);
   const currentClubData = topClubChart.map(d=>d.membership + d.ptSales);
   const lmClubData = topClubChart.map(d=>{
@@ -644,11 +671,8 @@ function renderCash(rows){
     }
   });
 
-  const top5 = ranked.slice(0,5);
-  const bottom5 = ranked
-    .filter(d=>(d.membership+d.ptSales)>0 && !CLOSED_CLUBS.includes(String(d.club).toUpperCase()))
-    .slice(-5)
-    .reverse();
+  const top5 = activeRanked.slice(0,5);
+  const bottom5 = activeRanked.slice(-5).reverse();
 
   const topHtml = top5.map((d,i)=>{
     const totalRev = d.membership + d.ptSales;
@@ -665,7 +689,7 @@ function renderCash(rows){
     const totalRev = d.membership + d.ptSales;
     return `<div class="flex justify-between items-center p-3 rounded-xl bg-red-50">
       <div>
-        <div class="font-black">#${ranked.length-4+i} ${d.club}</div>
+        <div class="font-black">#${activeRanked.length-4+i} ${d.club}</div>
         <div class="text-xs text-gray-500">${d.region}</div>
       </div>
       <div class="font-black text-red-700">${money(totalRev)}</div>
