@@ -17,9 +17,42 @@
     .tab{transition:.18s ease}.tab.active{background:var(--red);color:white;box-shadow:0 10px 24px rgba(215,25,32,.22)}
     .badge-up{background:#ecfdf5;color:#047857}.badge-down{background:#fef2f2;color:#b91c1c}.badge-neutral{background:#f3f4f6;color:#374151}
     .table-row:hover{background:#fff7f7} select,input{outline:none}
+  
+    .login-overlay{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#111 0%,#2b0d0f 55%,#d71920 145%);display:flex;align-items:center;justify-content:center;padding:24px}
+    .login-box{width:100%;max-width:430px;background:white;border-radius:28px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
+    .login-input{width:100%;border:1px solid #e5e7eb;border-radius:16px;padding:14px 16px;margin-top:8px;font-size:16px}
+    .login-btn{width:100%;background:#d71920;color:white;border-radius:16px;padding:15px 16px;font-weight:900;margin-top:18px}
+    .login-error{display:none;color:#b91c1c;background:#fef2f2;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-top:12px}
+
   </style>
 </head>
 <body>
+
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-box">
+      <div class="text-xs uppercase tracking-[.25em] text-red-600 font-black">California Fitness & Yoga</div>
+      <h1 class="text-3xl font-black tracking-tight mt-2 text-gray-900">Performance Dashboard</h1>
+      <p class="text-sm text-gray-500 mt-2">Please sign in to access the commercial performance command center.</p>
+
+      <div class="mt-6">
+        <label class="mini-label">Username</label>
+        <input id="loginUser" class="login-input" placeholder="Enter username" autocomplete="username" />
+      </div>
+
+      <div class="mt-4">
+        <label class="mini-label">Password</label>
+        <input id="loginPass" class="login-input" placeholder="Enter password" type="password" autocomplete="current-password" />
+      </div>
+
+      <button id="loginBtn" class="login-btn">Login</button>
+      <div id="loginError" class="login-error">Incorrect username or password.</div>
+
+      <div class="text-xs text-gray-400 mt-5 leading-relaxed">
+        Access is restricted to authorized commercial team members only.
+      </div>
+    </div>
+  </div>
+
   <div class="min-h-screen">
     <header class="hero text-white px-6 py-7 md:px-10">
       <div class="max-w-7xl mx-auto">
@@ -956,7 +989,7 @@ function renderRanking(rows){
 }
 function renderClubTable(){
   const q=(byId('searchClub').value || '').toLowerCase();
-  const rows=getFiltered().filter(d=>d.club.toLowerCase().includes(q)).sort((a,b)=>cashTotal(b)-cashTotal(a));
+  const rows=getFiltered().filter(d=>!CLOSED_CLUBS.includes(String(d.club).toUpperCase()) && d.club.toLowerCase().includes(q)).sort((a,b)=>getRevenueTotal(b)-getRevenueTotal(a));
   byId('clubTable').innerHTML = rows.map(d=>{
     const total=cashTotal(d);
     const compareMode = byId('compareFilter').value;
@@ -1124,7 +1157,45 @@ function runSelfTests(){
 }
 window.renderDashboard = renderDashboard;
 window.renderClubTable = renderClubTable;
+
+function setupLogin(){
+  const overlay = byId('loginOverlay');
+  const user = byId('loginUser');
+  const pass = byId('loginPass');
+  const btn = byId('loginBtn');
+  const err = byId('loginError');
+
+  const AUTH_USER = 'Commercialteam';
+  const AUTH_PASS = '0909289331';
+
+  if(!overlay || !user || !pass || !btn) return;
+
+  if(sessionStorage.getItem('caliDashboardAuth') === 'yes'){
+    overlay.style.display = 'none';
+    return;
+  }
+
+  function attemptLogin(){
+    const ok = user.value.trim() === AUTH_USER && pass.value.trim() === AUTH_PASS;
+    if(ok){
+      sessionStorage.setItem('caliDashboardAuth','yes');
+      overlay.style.display = 'none';
+      err.style.display = 'none';
+    }else{
+      err.style.display = 'block';
+      pass.value = '';
+      pass.focus();
+    }
+  }
+
+  btn.addEventListener('click', attemptLogin);
+  [user, pass].forEach(el=>el.addEventListener('keydown', e=>{
+    if(e.key === 'Enter') attemptLogin();
+  }));
+}
+
 document.addEventListener('DOMContentLoaded', async ()=>{
+  setupLogin();
   await loadData();
   setupFilters();
   renderDashboard();
