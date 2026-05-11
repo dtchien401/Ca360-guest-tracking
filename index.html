@@ -27,7 +27,7 @@
           <div>
             <div class="text-xs uppercase tracking-[.25em] text-red-100 font-bold">California Fitness & Yoga</div>
             <h1 class="text-3xl md:text-5xl font-black tracking-tight mt-1">Performance Command Center</h1>
-            <p class="text-red-50 mt-2 max-w-2xl">Dashboard prototype đọc toàn bộ dữ liệu từ Google Sheet: NMS, PT Sales, PTSS Served, Guest from MKT, Guest from Club Dept và NMU theo tháng / club.</p>
+            <p class="text-red-50 mt-2 max-w-2xl">Dashboard đọc dữ liệu từ Sheet1: Type = Revenue là actual cash; Type = KPIs là non-cash metrics như PTSS, Guest, NMU.</p>
           </div>
           <div class="bg-white/10 border border-white/15 rounded-2xl p-4 min-w-[240px]">
             <div class="text-xs text-red-100 uppercase tracking-widest font-bold">Selected Period</div>
@@ -45,7 +45,7 @@
           <div><label class="mini-label">Period</label><select id="periodFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
           <div><label class="mini-label">Region</label><select id="regionFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
           <div><label class="mini-label">Club</label><select id="clubFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
-          <div><label class="mini-label">Compare</label><select id="compareFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"><option value="TARGET">vs KPIs</option><option value="LM">vs Last Month</option><option value="LY">vs Last Year</option></select></div>
+          <div><label class="mini-label">Compare</label><select id="compareFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"><option value="LM">vs Last Month</option><option value="LY">vs Last Year</option></select></div>
           <button id="applyBtn" class="bg-[#d71920] hover:bg-[#b9141a] text-white rounded-xl px-4 py-3 font-bold">Apply Filter</button>
         </div>
       </section>
@@ -76,9 +76,17 @@
             </div>
 
             <div>
-              <div class="flex items-center justify-between mb-2">
-                <div class="text-sm font-bold text-gray-500">Revenue by Club</div>
-                <div class="text-xs text-gray-400" id="activeClubCountNote">Active clubs</div>
+              <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                <div>
+                  <div class="text-sm font-bold text-gray-500">Revenue by Club</div>
+                  <div class="text-xs text-gray-400" id="activeClubCountNote">Active clubs</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <label class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">Product Line</label>
+                  <select id="clubProductFilter" class="border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm font-bold min-w-[180px]">
+                    <option value="ALL">All Revenue</option>
+                  </select>
+                </div>
               </div>
               <canvas id="revClubChart" height="130"></canvas>
             </div>
@@ -257,7 +265,7 @@ function rowsForMonthWithCurrentFilters(month){
 
 function aggregateMetricRows(rows, monthForCutoff){
   const cutoff = monthForCutoff && monthForCutoff !== 'ALL' ? sameDayCutoffForMonth(monthForCutoff) : 31;
-  const cash = sum(rows,'membership') + sum(rows,'ptSales');
+  const cash = cashTotalRows(rows);
   const guest = sum(rows,'guest');
   const nmu = sum(rows,'nmu');
 
@@ -289,6 +297,7 @@ function getLastMonthMetrics(){
   const cutoff = sameDayCutoffForMonth(lm);
   const membership = sumDailyToDay(lmRows,'dailyMembership',cutoff);
   const ptSales = sumDailyToDay(lmRows,'dailyPt',cutoff);
+  const cash = sumDailyProductCashToDay(lmRows, cutoff);
   const ptss = sumDailyToDay(lmRows,'dailyPtss',cutoff);
   const guest = sumDailyToDay(lmRows,'dailyGuest',cutoff);
 
@@ -298,7 +307,7 @@ function getLastMonthMetrics(){
   const closeRate = fullGuest ? fullNmu / fullGuest : 0;
   const nmu = guest * closeRate;
 
-  return {month:lm, membership, ptSales, cash:membership + ptSales, ptss, guest, nmu, closeRate, cutoff};
+  return {month:lm, membership, ptSales, cash, ptss, guest, nmu, closeRate, cutoff};
 }
 
 function comparePct(current, base){
@@ -338,7 +347,37 @@ function compareBadgeDetailed(change, label, deltaText){
   return '<span class="'+cls+' px-2 py-1 rounded-full text-xs font-bold">'+sign+pct(Math.abs(change))+' '+label+'</span>' + delta;
 }
 function cashTotal(row){
+  const productMap = row && row.productRevenue && typeof row.productRevenue === 'object' ? row.productRevenue : null;
+  if(productMap && Object.keys(productMap).length){
+    return Object.keys(productMap).reduce((total,name)=>total + safeNumber(productMap[name]),0);
+  }
   return safeNumber(row.membership) + safeNumber(row.ptSales);
+}
+function cashTotalRows(rows){
+  return rows.reduce((total,row)=>total + cashTotal(row),0);
+}
+function sumDailyProductCashToDay(rows, day){
+  return rows.reduce((total,row)=>{
+    const productDaily = row && row.dailyProductRevenue && typeof row.dailyProductRevenue === 'object' ? row.dailyProductRevenue : null;
+    if(productDaily && Object.keys(productDaily).length){
+      Object.keys(productDaily).forEach(name=>{
+        const arr = productDaily[name] || [];
+        for(let i=0;i<day;i++) total += safeNumber(arr[i]);
+      });
+      return total;
+    }
+    for(let i=0;i<day;i++) total += safeNumber((row.dailyMembership || [])[i]) + safeNumber((row.dailyPt || [])[i]);
+    return total;
+  },0);
+}
+function sumDailyProductCashArray(rows, cutoff){
+  return Array.from({length:cutoff},(_,i)=>rows.reduce((total,row)=>{
+    const productDaily = row && row.dailyProductRevenue && typeof row.dailyProductRevenue === 'object' ? row.dailyProductRevenue : null;
+    if(productDaily && Object.keys(productDaily).length){
+      return total + Object.keys(productDaily).reduce((sub,name)=>sub + safeNumber((productDaily[name] || [])[i]),0);
+    }
+    return total + safeNumber((row.dailyMembership || [])[i]) + safeNumber((row.dailyPt || [])[i]);
+  },0));
 }
 function lastMonthRowsForClub(club){
   const lm = previousMonthString(getPeriod());
@@ -350,13 +389,11 @@ function lastMonthCashForClub(club){
   const lmRows = lastMonthRowsForClub(club);
   if(!lm || !lmRows.length) return null;
   const cutoff = sameDayCutoffForMonth(lm);
-  const value = sumDailyToDay(lmRows,'dailyMembership',cutoff) + sumDailyToDay(lmRows,'dailyPt',cutoff);
+  const value = sumDailyProductCashToDay(lmRows, cutoff);
   return {month:lm, cutoff, value};
 }
 function sumDailyCashArray(rows, cutoff){
-  return Array.from({length:cutoff},(_,i)=>rows.reduce((total,row)=>{
-    return total + safeNumber((row.dailyMembership || [])[i]) + safeNumber((row.dailyPt || [])[i]);
-  },0));
+  return sumDailyProductCashArray(rows, cutoff);
 }
 function cumulative(arr){
   let running = 0;
@@ -368,7 +405,7 @@ function mapFallbackData(){
     const month = r[0], club = r[1], region = r[2], membership = r[3], ptSales = r[4], ptss = r[5], guestMkt = r[6], guestClub = r[7], nmu = r[8];
     const guest = guestMkt + guestClub;
     const total = membership + ptSales;
-    return {month,club,region,membership,ptSales,ptss,guestMkt,guestClub,guest,nmu,target:total*1.05 || 1,dailyMembership:makeDaily(membership,idx),dailyPt:makeDaily(ptSales,idx+2),dailyPtss:makeDaily(ptss,idx+4),dailyGuest:makeDaily(guest,idx+1),dailyTarget:makeDaily(total*1.05 || 1,idx+6)};
+    return {month,club,region,membership,ptSales,ptss,guestMkt,guestClub,guest,nmu,target:total*1.05 || 1,dailyMembership:makeDaily(membership,idx),dailyPt:makeDaily(ptSales,idx+2),dailyPtss:makeDaily(ptss,idx+4),dailyGuest:makeDaily(guest,idx+1),dailyTarget:makeDaily(total*1.05 || 1,idx+6),productRevenue:{'NMS':membership,'PT':ptSales},dailyProductRevenue:{'NMS':makeDaily(membership,idx),'PT':makeDaily(ptSales,idx+2)}};
   });
 }
 function normalizeApiRow(row,idx){
@@ -384,12 +421,14 @@ function normalizeApiRow(row,idx){
     club: String(row.club || row.Club || row.Location || '').trim(),
     region: row.region || row.Region || 'Unassigned',
     membership, ptSales, ptss, guestMkt, guestClub, guest, nmu,
-    target: safeNumber(row.target) || (membership + ptSales) * 1.05 || 1,
+    target: 0,
     dailyMembership: Array.isArray(row.dailyMembership) ? row.dailyMembership : makeDaily(membership,idx),
     dailyPt: Array.isArray(row.dailyPt) ? row.dailyPt : makeDaily(ptSales,idx+2),
     dailyPtss: Array.isArray(row.dailyPtss) ? row.dailyPtss : makeDaily(ptss,idx+4),
     dailyGuest: Array.isArray(row.dailyGuest) ? row.dailyGuest : makeDaily(guest,idx+1),
-    dailyTarget: Array.isArray(row.dailyTarget) ? row.dailyTarget : makeDaily(safeNumber(row.target) || (membership + ptSales) * 1.05 || 1,idx+6)
+    dailyTarget: Array(31).fill(0),
+    productRevenue: row.productRevenue && typeof row.productRevenue === 'object' ? row.productRevenue : {'NMS':membership,'PT':ptSales},
+    dailyProductRevenue: row.dailyProductRevenue && typeof row.dailyProductRevenue === 'object' ? row.dailyProductRevenue : {'NMS':Array.isArray(row.dailyMembership) ? row.dailyMembership : makeDaily(membership,idx),'PT':Array.isArray(row.dailyPt) ? row.dailyPt : makeDaily(ptSales,idx+2)}
   };
 }
 function loadJsonp(url){
@@ -444,10 +483,19 @@ function getPeriodRows(){ const p = getPeriod(); return p === 'ALL' ? allData : 
 function aggregateByClub(rows){
   const map = new Map();
   rows.forEach(r=>{
-    if(!map.has(r.club)) map.set(r.club,{club:r.club,region:r.region,membership:0,ptSales:0,ptss:0,guestMkt:0,guestClub:0,guest:0,nmu:0,target:0,dailyMembership:Array(31).fill(0),dailyPt:Array(31).fill(0),dailyPtss:Array(31).fill(0),dailyGuest:Array(31).fill(0),dailyTarget:Array(31).fill(0)});
+    if(!map.has(r.club)) map.set(r.club,{club:r.club,region:r.region,membership:0,ptSales:0,ptss:0,guestMkt:0,guestClub:0,guest:0,nmu:0,target:0,dailyMembership:Array(31).fill(0),dailyPt:Array(31).fill(0),dailyPtss:Array(31).fill(0),dailyGuest:Array(31).fill(0),dailyTarget:Array(31).fill(0),productRevenue:{},dailyProductRevenue:{}});
     const x = map.get(r.club);
     ['membership','ptSales','ptss','guestMkt','guestClub','guest','nmu','target'].forEach(k=>x[k]+=safeNumber(r[k]));
     ['dailyMembership','dailyPt','dailyPtss','dailyGuest','dailyTarget'].forEach(k=>{ for(let i=0;i<31;i++) x[k][i] += safeNumber((r[k] || [])[i]); });
+    Object.keys(r.productRevenue || {}).forEach(name=>{
+      if(!x.productRevenue[name]) x.productRevenue[name] = 0;
+      x.productRevenue[name] += safeNumber(r.productRevenue[name]);
+    });
+    Object.keys(r.dailyProductRevenue || {}).forEach(name=>{
+      if(!x.dailyProductRevenue[name]) x.dailyProductRevenue[name] = Array(31).fill(0);
+      const arr = r.dailyProductRevenue[name] || [];
+      for(let i=0;i<31;i++) x.dailyProductRevenue[name][i] += safeNumber(arr[i]);
+    });
   });
   return Array.from(map.values());
 }
@@ -487,6 +535,8 @@ function setupFilters(){
   byId('regionFilter').addEventListener('change', renderDashboard);
   byId('clubFilter').addEventListener('change', renderDashboard);
   byId('compareFilter').addEventListener('change', renderDashboard);
+  const clubProductFilter = byId('clubProductFilter');
+  if(clubProductFilter) clubProductFilter.addEventListener('change', renderDashboard);
   byId('searchClub').addEventListener('input', renderClubTable);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
@@ -498,7 +548,7 @@ function setupFilters(){
   }));
 }
 function renderCards(rows){
-  const membership=sum(rows,'membership'), pt=sum(rows,'ptSales'), total=membership+pt, ptss=sum(rows,'ptss'), guest=sum(rows,'guest'), nmu=sum(rows,'nmu');
+  const membership=sum(rows,'membership'), pt=sum(rows,'ptSales'), total=cashTotalRows(rows), ptss=sum(rows,'ptss'), guest=sum(rows,'guest'), nmu=sum(rows,'nmu');
   const closeRate = guest ? nmu / guest : 0;
   byId('headerTotal').textContent = money(total);
 
@@ -515,59 +565,122 @@ function renderCards(rows){
       ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(lm ? comparePct(ptss,lm.ptss) : null, label, lm ? signedNumber(ptss-lm.ptss)+' sessions' : '')],
       ['Guest Close Rate', pct(closeRate), compareBadgeDetailed(lm ? comparePct(closeRate,lm.closeRate) : null, label, lm ? signedPctPoint(closeRate-lm.closeRate)+' vs '+lm.month : '')]
     ];
-  }else if(compareMode === 'TARGET'){
-    const target = targetToDate(rows);
-    const ach = targetAchievement(total,rows);
-    cards = [
-      ['Total Cash', money(total), compareBadgeDetailed(ach - 1, 'vs KPIs', signedMoney(total-target)+' vs KPIs') + '<div class="text-[11px] text-gray-400 mt-1">'+targetToDateLabel()+'</div>'],
-      ['Membership Sales', money(membership), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+pct(total?membership/total:0)+' mix</span>'],
-      ['PT Sales', money(pt), '<span class="'+(total && pt/total>=0.42?'badge-up':'badge-neutral')+' px-2 py-1 rounded-full text-xs font-bold">'+pct(total?pt/total:0)+' mix</span>'],
-      ['PTSS Served', Math.round(ptss).toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">sessions</span>'],
-      ['Guest Close Rate', pct(closeRate), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+Math.round(guest).toLocaleString()+' guests</span>']
-    ];
   }else{
     const periodText = getPeriod() === 'ALL' ? 'All Periods' : getPeriod();
     cards = [
-      ['Total Cash',money(total),'<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+periodText+'</span>'],
+      ['Total Cash',money(total),'<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">Actual Revenue · '+periodText+'</span>'],
       ['Membership Sales',money(membership),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+pct(total?membership/total:0)+' mix</span>'],
       ['PT Sales',money(pt),'<span class="'+(total && pt/total>=0.42?'badge-up':'badge-neutral')+' px-2 py-1 rounded-full text-xs font-bold">'+pct(total?pt/total:0)+' mix</span>'],
-      ['PTSS Served',Math.round(ptss).toLocaleString(),'<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">sessions</span>'],
+      ['PTSS Served',Math.round(ptss).toLocaleString(),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Non-cash KPI</span>'],
       ['Guest Close Rate',pct(closeRate),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+Math.round(guest).toLocaleString()+' guests</span>']
     ];
   }
 
   byId('kpiCards').innerHTML = cards.map(c=>'<div class="card p-4"><div class="mini-label">'+c[0]+'</div><div class="metric mt-1">'+c[1]+'</div><div class="mt-2">'+c[2]+'</div></div>').join('');
 }
+
+function aggregateProductRevenue(rows){
+  const map = {};
+  rows.forEach(r=>{
+    Object.keys(r.productRevenue || {}).forEach(name=>{
+      if(!map[name]) map[name] = 0;
+      map[name] += safeNumber(r.productRevenue[name]);
+    });
+  });
+  return Object.keys(map)
+    .map(name=>({label:name,value:map[name]}))
+    .filter(x=>Math.abs(x.value) > 0)
+    .sort((a,b)=>b.value-a.value);
+}
+function aggregateDailyProductRevenueToDay(rows, day){
+  const map = {};
+  rows.forEach(r=>{
+    Object.keys(r.dailyProductRevenue || {}).forEach(name=>{
+      if(!map[name]) map[name] = 0;
+      const arr = r.dailyProductRevenue[name] || [];
+      for(let i=0;i<day;i++) map[name] += safeNumber(arr[i]);
+    });
+  });
+  return map;
+}
+function getAllProductLines(rows){
+  const set = new Set();
+  rows.forEach(r=>{
+    Object.keys(r.productRevenue || {}).forEach(name=>{
+      if(String(name).trim()) set.add(String(name));
+    });
+  });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
+}
+function setupClubProductFilter(rows){
+  const select = byId('clubProductFilter');
+  if(!select) return 'ALL';
+  const current = select.value || 'ALL';
+  const products = getAllProductLines(rows);
+  select.innerHTML = '<option value="ALL">All Revenue</option>' + products.map(name=>'<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>').join('');
+  select.value = (current === 'ALL' || products.includes(current)) ? current : 'ALL';
+  return select.value || 'ALL';
+}
+function escapeHtml(value){
+  return String(value || '').replace(/[&<>"']/g, function(ch){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[ch];
+  });
+}
+function productRevenueValue(row, productLine){
+  if(!productLine || productLine === 'ALL') return cashTotal(row);
+  return safeNumber((row.productRevenue || {})[productLine]);
+}
+function productRevenueRows(rows, productLine){
+  return rows.reduce((total,row)=>total + productRevenueValue(row, productLine), 0);
+}
+function sumDailyProductLineToDay(rows, productLine, day){
+  if(!productLine || productLine === 'ALL') return sumDailyProductCashToDay(rows, day);
+  return rows.reduce((total,row)=>{
+    const arr = ((row.dailyProductRevenue || {})[productLine]) || [];
+    for(let i=0;i<day;i++) total += safeNumber(arr[i]);
+    return total;
+  },0);
+}
+function lastMonthCashForClubProduct(club, productLine){
+  const lm = previousMonthString(getPeriod());
+  const lmRows = lastMonthRowsForClub(club);
+  if(!lm || !lmRows.length) return null;
+  const cutoff = sameDayCutoffForMonth(lm);
+  const value = sumDailyProductLineToDay(lmRows, productLine, cutoff);
+  return {month:lm, cutoff, value};
+}
+function trendTotalRevenueSeries(rows){
+  if(getPeriod() !== 'ALL'){
+    return sumDailyProductCashArray(rows, 31);
+  }
+  const clubs = new Set(rows.map(r=>r.club));
+  return trendLabels().map(m=>cashTotalRows(allData.filter(r=>r.month === m && clubs.has(r.club))));
+}
+function trendStatusBadge(change){
+  if(change === null || !Number.isFinite(change)) return '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">No LM data</span>';
+  if(change > 0.02) return '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">Growing</span>';
+  if(change < -0.02) return '<span class="badge-down px-2 py-1 rounded-full text-xs font-bold">Declining</span>';
+  return '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Stable</span>';
+}
 function renderCash(rows){
-  const membership=sum(rows,'membership'), pt=sum(rows,'ptSales'), total=membership+pt;
+  const membership=sum(rows,'membership'), pt=sum(rows,'ptSales'), total=cashTotalRows(rows);
   const compareMode = byId('compareFilter').value;
 
-  // Revenue lines (temporary simulated extra lines until clean categories are fully mapped)
-  const revenueLines = [
-    {label:'NMS', value:membership},
-    {label:'PT', value:pt},
-    {label:'Hypoxi', value:total * 0.08},
-    {label:'Pilates', value:total * 0.06},
-    {label:'Supplement', value:total * 0.04},
-    {label:'VAS', value:total * 0.03}
-  ];
+  // Revenue by Product Line now uses real Categories from Sheet1 instead of hard-coded products.
+  const revenueLines = aggregateProductRevenue(rows);
 
   let lmRevenueLines = [];
   if(compareMode === 'LM' && getPeriod() !== 'ALL'){
     const lm = previousMonthString(getPeriod());
     const lmRows = rowsForMonthWithCurrentFilters(lm);
     const cutoff = lm ? sameDayCutoffForMonth(lm) : comparisonDayForSelectedPeriod();
-    const lmMembership = sumDailyToDay(lmRows,'dailyMembership',cutoff);
-    const lmPt = sumDailyToDay(lmRows,'dailyPt',cutoff);
-    const lmTotal = lmMembership + lmPt;
-    lmRevenueLines = [
-      {label:'NMS', value:lmMembership},
-      {label:'PT', value:lmPt},
-      {label:'Hypoxi', value:lmTotal * 0.08},
-      {label:'Pilates', value:lmTotal * 0.06},
-      {label:'Supplement', value:lmTotal * 0.04},
-      {label:'VAS', value:lmTotal * 0.03}
-    ];
+    const lmMap = aggregateDailyProductRevenueToDay(lmRows, cutoff);
+    lmRevenueLines = revenueLines.map(x=>({label:x.label,value:safeNumber(lmMap[x.label])}));
+  }
+
+  const cashMixCanvas = byId('cashMixChart');
+  if(cashMixCanvas){
+    cashMixCanvas.height = Math.max(120, revenueLines.length * 26);
   }
 
   drawChart('cashMixChart',{
@@ -586,7 +699,7 @@ function renderCash(rows){
     options:{
       responsive:true,
       plugins:{legend:{display:compareMode === 'LM', position:'bottom'}},
-      scales:{y:{ticks:{callback:v=>money(v)}}}
+      scales:{x:{ticks:{autoSkip:false,maxRotation:60,minRotation:35}},y:{ticks:{callback:v=>money(v)}}}
     }
   });
 
@@ -620,8 +733,7 @@ function renderCash(rows){
       data:{
         labels:trendLabels(),
         datasets:[
-          {label:'NMS',data:trendSeries(rows,'membership'),tension:.35},
-          {label:'PT',data:trendSeries(rows,'ptSales'),tension:.35}
+          {label:'Total Revenue',data:trendTotalRevenueSeries(rows),tension:.35,borderWidth:3}
         ]
       },
       options:{
@@ -632,19 +744,21 @@ function renderCash(rows){
     });
   }
 
-  const ranked=[...rows].sort((a,b)=>(b.membership+b.ptSales)-(a.membership+a.ptSales));
+  const selectedProductLine = setupClubProductFilter(rows);
+  const ranked=[...rows].sort((a,b)=>productRevenueValue(b, selectedProductLine)-productRevenueValue(a, selectedProductLine));
   const activeRanked = ranked.filter(d =>
-    (d.membership + d.ptSales) > 0 &&
+    productRevenueValue(d, selectedProductLine) > 0 &&
     !CLOSED_CLUBS.includes(String(d.club).toUpperCase())
   );
 
   const topClubChart = activeRanked;
   const countNote = byId('activeClubCountNote');
-  if(countNote) countNote.textContent = topClubChart.length + ' active clubs';
+  const productNote = selectedProductLine === 'ALL' ? 'All Revenue' : selectedProductLine;
+  if(countNote) countNote.textContent = topClubChart.length + ' active clubs · ' + productNote;
   const labels = topClubChart.map(d=>d.club);
-  const currentClubData = topClubChart.map(d=>d.membership + d.ptSales);
+  const currentClubData = topClubChart.map(d=>productRevenueValue(d, selectedProductLine));
   const lmClubData = topClubChart.map(d=>{
-    const lm = lastMonthCashForClub(d.club);
+    const lm = lastMonthCashForClubProduct(d.club, selectedProductLine);
     return lm ? lm.value : null;
   });
 
@@ -653,17 +767,17 @@ function renderCash(rows){
     data:{
       labels,
       datasets: compareMode === 'LM' ? [
-        {type:'bar',label:'Current Month MTD',data:currentClubData,borderRadius:10},
-        {type:'line',label:'Last Month Same-Day',data:lmClubData,tension:.25,borderWidth:2,pointRadius:3,spanGaps:true}
+        {type:'bar',label:'Current MTD · '+productNote,data:currentClubData,borderRadius:10},
+        {type:'line',label:'Last Month Same-Day · '+productNote,data:lmClubData,tension:.25,borderWidth:2,pointRadius:3,spanGaps:true}
       ] : [{
-        label:'Revenue',
+        label:productNote,
         data:currentClubData,
         borderRadius:10
       }]
     },
     options:{
       responsive:true,
-      plugins:{legend:{display:compareMode === 'LM', position:'bottom'}},
+      plugins:{legend:{display:true, position:'bottom'}},
       scales:{
         x:{ticks:{autoSkip:false,maxRotation:60,minRotation:45}},
         y:{ticks:{callback:v=>money(v)}}
@@ -675,7 +789,7 @@ function renderCash(rows){
   const bottom5 = activeRanked.slice(-5).reverse();
 
   const topHtml = top5.map((d,i)=>{
-    const totalRev = d.membership + d.ptSales;
+    const totalRev = cashTotal(d);
     return `<div class="flex justify-between items-center p-3 rounded-xl bg-green-50">
       <div>
         <div class="font-black">#${i+1} ${d.club}</div>
@@ -686,7 +800,7 @@ function renderCash(rows){
   }).join('');
 
   const bottomHtml = bottom5.map((d,i)=>{
-    const totalRev = d.membership + d.ptSales;
+    const totalRev = cashTotal(d);
     return `<div class="flex justify-between items-center p-3 rounded-xl bg-red-50">
       <div>
         <div class="font-black">#${activeRanked.length-4+i} ${d.club}</div>
@@ -722,42 +836,45 @@ function renderGuest(rows){
   byId('guestTable').innerHTML = sourceData.map(d=>'<tr class="table-row border-b"><td class="py-3 font-bold">'+d.source+'</td><td>'+Math.round(d.guest).toLocaleString()+'</td><td>'+d.closed.toFixed(1)+'</td><td>'+pct(d.guest?d.closed/d.guest:0)+'</td><td>'+(d.guest && d.closed/d.guest<0.18?'Improve follow-up script':'Scale this source')+'</td></tr>').join('');
 }
 function renderRanking(rows){
-  const sorted=[...rows].sort((a,b)=>(b.membership+b.ptSales)-(a.membership+a.ptSales));
+  const sorted=[...rows].sort((a,b)=>cashTotal(b)-cashTotal(a));
   const top=sorted.slice(0,10), bottom=sorted
-    .filter(d=>d.membership+d.ptSales>0 && !CLOSED_CLUBS.includes(String(d.club).toUpperCase()))
+    .filter(d=>cashTotal(d)>0 && !CLOSED_CLUBS.includes(String(d.club).toUpperCase()))
     .slice(-5)
     .reverse();
-  drawChart('rankingChart',{type:'bar',data:{labels:top.map(d=>d.club),datasets:[{label:'Cash Total',data:top.map(d=>d.membership+d.ptSales),borderRadius:12}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>money(v)}}}}});
-  byId('focusList').innerHTML = bottom.map(d=>'<div class="p-4 rounded-2xl bg-gray-50 flex justify-between gap-3"><div><b>'+d.club+'</b><div class="text-xs text-gray-500">'+d.region+' · PTSS '+Math.round(d.ptss)+'</div></div><div>'+statusBadge(targetAchievement(d.membership + d.ptSales, d))+'</div></div>').join('');
+  drawChart('rankingChart',{type:'bar',data:{labels:top.map(d=>d.club),datasets:[{label:'Cash Total',data:top.map(d=>cashTotal(d)),borderRadius:12}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>money(v)}}}}});
+  byId('focusList').innerHTML = bottom.map(d=>{
+    const lm = lastMonthCashForClub(d.club);
+    const change = lm ? comparePct(cashTotal(d), lm.value) : null;
+    return '<div class="p-4 rounded-2xl bg-gray-50 flex justify-between gap-3"><div><b>'+d.club+'</b><div class="text-xs text-gray-500">'+d.region+' · Revenue '+money(cashTotal(d))+' · PTSS '+Math.round(d.ptss)+'</div></div><div>'+trendStatusBadge(change)+'</div></div>';
+  }).join('');
   renderClubTable();
 }
 function renderClubTable(){
   const q=(byId('searchClub').value || '').toLowerCase();
-  const rows=getFiltered().filter(d=>d.club.toLowerCase().includes(q)).sort((a,b)=>(b.membership+b.ptSales)-(a.membership+a.ptSales));
+  const rows=getFiltered().filter(d=>d.club.toLowerCase().includes(q)).sort((a,b)=>cashTotal(b)-cashTotal(a));
   byId('clubTable').innerHTML = rows.map(d=>{
-    const total=d.membership+d.ptSales;
+    const total=cashTotal(d);
     const compareMode = byId('compareFilter').value;
-    let ach = compareMode === 'TARGET' ? targetAchievement(total, d) : total/(d.target||1);
-    let statusNote = compareMode === 'TARGET'
-      ? '<div class="text-[11px] text-gray-400">'+targetToDateLabel()+'</div>'
-      : '';
     let lmCell = '<span class="text-xs text-gray-400">—</span>';
+    let statusHtml = '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Actual</span>';
+    let statusNote = '<div class="text-[11px] text-gray-400">Revenue from Type = Revenue</div>';
 
     if(compareMode === 'LM'){
       const lm = lastMonthCashForClub(d.club);
       if(lm){
         const change = comparePct(total,lm.value);
         const delta = total - lm.value;
-        ach = change === null ? 0 : change + 1;
         lmCell = compareBadgeDetailed(change, 'vs '+lm.month+' D'+lm.cutoff, signedMoney(delta));
+        statusHtml = trendStatusBadge(change);
         statusNote = '<div class="text-[11px] text-gray-400">LM base '+money(lm.value)+'</div>';
       }else{
         lmCell = '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">No LM data</span>';
+        statusHtml = '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">No LM data</span>';
         statusNote = '<div class="text-[11px] text-gray-400">No last month data</div>';
       }
     }
 
-    return '<tr class="table-row border-b"><td class="py-3 font-black">'+d.club+'</td><td>'+d.region+'</td><td>'+money(d.membership)+'</td><td>'+money(d.ptSales)+'</td><td class="font-bold">'+money(total)+'</td><td>'+lmCell+'</td><td>'+Math.round(d.ptss).toLocaleString()+'</td><td>'+Math.round(d.guest).toLocaleString()+'</td><td>'+d.nmu+'</td><td>'+pct(d.guest?d.nmu/d.guest:0)+'</td><td>'+statusBadge(ach)+' <span class="text-xs text-gray-500">'+pct(ach)+'</span>'+statusNote+'</td></tr>';
+    return '<tr class="table-row border-b"><td class="py-3 font-black">'+d.club+'</td><td>'+d.region+'</td><td>'+money(d.membership)+'</td><td>'+money(d.ptSales)+'</td><td class="font-bold">'+money(total)+'</td><td>'+lmCell+'</td><td>'+Math.round(d.ptss).toLocaleString()+'</td><td>'+Math.round(d.guest).toLocaleString()+'</td><td>'+d.nmu+'</td><td>'+pct(d.guest?d.nmu/d.guest:0)+'</td><td>'+statusHtml+statusNote+'</td></tr>';
   }).join('');
 }
 function renderDashboard(){
