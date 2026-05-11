@@ -45,7 +45,7 @@
           <div><label class="mini-label">Period</label><select id="periodFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
           <div><label class="mini-label">Region</label><select id="regionFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
           <div><label class="mini-label">Club</label><select id="clubFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
-          <div><label class="mini-label">Compare</label><select id="compareFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"><option value="TARGET">vs Target</option><option value="LM">vs Last Month</option><option value="LY">vs Last Year</option></select></div>
+          <div><label class="mini-label">Compare</label><select id="compareFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"><option value="TARGET">vs KPIs</option><option value="LM">vs Last Month</option><option value="LY">vs Last Year</option></select></div>
           <button id="applyBtn" class="bg-[#d71920] hover:bg-[#b9141a] text-white rounded-xl px-4 py-3 font-bold">Apply Filter</button>
         </div>
       </section>
@@ -210,8 +210,8 @@ function targetAchievement(actual, targetInput){
 
 function targetToDateLabel(){
   const month = getPeriod();
-  if(month === 'ALL') return 'Full target';
-  return 'Target to day ' + actualDayOfPeriod(month) + '/' + daysInMonth(month);
+  if(month === 'ALL') return 'Full KPIs';
+  return 'KPIs to day ' + actualDayOfPeriod(month) + '/' + daysInMonth(month);
 }
 
 
@@ -519,7 +519,7 @@ function renderCards(rows){
     const target = targetToDate(rows);
     const ach = targetAchievement(total,rows);
     cards = [
-      ['Total Cash', money(total), compareBadgeDetailed(ach - 1, 'vs Target', signedMoney(total-target)+' vs target') + '<div class="text-[11px] text-gray-400 mt-1">'+targetToDateLabel()+'</div>'],
+      ['Total Cash', money(total), compareBadgeDetailed(ach - 1, 'vs KPIs', signedMoney(total-target)+' vs KPIs') + '<div class="text-[11px] text-gray-400 mt-1">'+targetToDateLabel()+'</div>'],
       ['Membership Sales', money(membership), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+pct(total?membership/total:0)+' mix</span>'],
       ['PT Sales', money(pt), '<span class="'+(total && pt/total>=0.42?'badge-up':'badge-neutral')+' px-2 py-1 rounded-full text-xs font-bold">'+pct(total?pt/total:0)+' mix</span>'],
       ['PTSS Served', Math.round(ptss).toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">sessions</span>'],
