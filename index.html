@@ -141,6 +141,17 @@
       <section id="guest" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="card p-5"><div class="mini-label">Source Mix</div><h2 class="text-xl font-black mb-4">Guest by Source</h2><canvas id="guestSourceChart" height="210"></canvas></div>
         <div class="card p-5 lg:col-span-2"><div class="mini-label">Funnel Quality</div><h2 class="text-xl font-black mb-4">Guest → Close by Source</h2><canvas id="guestCloseChart" height="120"></canvas></div>
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Club Funnel</div>
+              <h2 class="text-xl font-black">Guest vs NMU by Club</h2>
+              <p class="text-xs text-gray-400 mt-1">Stacked by source: guest volume mix by club with NMU/Closed line overlay.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Guest by Club</span>
+          </div>
+          <canvas id="guestClubChart" height="180"></canvas>
+        </div>
         <div class="card p-5 lg:col-span-3"><div class="mini-label">Guest Table</div><h2 class="text-xl font-black mb-4">Source Performance Detail</h2><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-3">Source</th><th>Guest</th><th>NMU / Closed</th><th>Close Rate</th><th>Action Signal</th></tr></thead><tbody id="guestTable"></tbody></table></div></div>
       </section>
 
@@ -1076,6 +1087,52 @@ function aggregateGuestSourceData(actualRows){
     .sort((a,b)=>b.guest-a.guest);
 }
 
+
+
+function aggregateGuestClubData(){
+  const rows = guestRowsForCurrentFilter();
+  const clubMap = new Map();
+  const sourceTotals = new Map();
+
+  rows.forEach(r=>{
+    const club = String(r.club || '').trim().toUpperCase();
+    if(!club || CLOSED_CLUBS.includes(club)) return;
+
+    if(!clubMap.has(club)){
+      clubMap.set(club,{
+        club:club,
+        region:r.region || 'Unassigned',
+        guest:0,
+        closed:0,
+        sources:{}
+      });
+    }
+
+    const x = clubMap.get(club);
+
+    if(isNmuRow(r)){
+      x.closed += safeNumber(r.value);
+    }else if(isGuestRow(r)){
+      const source = guestSourceLabel(r);
+      const value = safeNumber(r.value);
+
+      x.guest += value;
+      x.sources[source] = safeNumber(x.sources[source]) + value;
+      sourceTotals.set(source, safeNumber(sourceTotals.get(source)) + value);
+    }
+  });
+
+  const clubs = Array.from(clubMap.values())
+    .filter(x=>x.guest || x.closed)
+    .sort((a,b)=>b.guest-a.guest);
+
+  const sources = Array.from(sourceTotals.entries())
+    .sort((a,b)=>safeNumber(b[1]) - safeNumber(a[1]))
+    .map(x=>x[0]);
+
+  return {clubs, sources};
+}
+
 async function loadData(){
   setStatus('Loading JSON data...');
   await loadTargetData();
@@ -1659,6 +1716,9 @@ function renderPtss(rows){
 function renderGuest(rows){
   const sourceData = aggregateGuestSourceData(rows);
   const topSources = sourceData.slice(0,8);
+  const clubAgg = aggregateGuestClubData();
+  const clubData = clubAgg.clubs.slice(0,20);
+  const clubSources = clubAgg.sources.slice(0,8);
 
   drawChart('guestSourceChart',{
     type:'doughnut',
@@ -1688,11 +1748,67 @@ function renderGuest(rows){
     }
   });
 
+  drawChart('guestClubChart',{
+    type:'bar',
+    data:{
+      labels:clubData.map(d=>d.club),
+      datasets:[
+        ...clubSources.map(source=>({
+          type:'bar',
+          label:source,
+          data:clubData.map(d=>safeNumber(d.sources[source])),
+          stack:'guest',
+          borderRadius:6,
+          yAxisID:'y'
+        })),
+        {
+          type:'line',
+          label:'NMU / Closed',
+          data:clubData.map(d=>safeNumber(d.closed)),
+          tension:.35,
+          borderWidth:3,
+          pointRadius:4,
+          yAxisID:'y'
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom'},
+        tooltip:{
+          callbacks:{
+            afterBody:function(items){
+              const idx = items && items.length ? items[0].dataIndex : 0;
+              const d = clubData[idx] || {guest:0,closed:0};
+              return [
+                'Total Guest: ' + Math.round(safeNumber(d.guest)).toLocaleString(),
+                'NMU / Closed: ' + Math.round(safeNumber(d.closed)).toLocaleString(),
+                'Close rate: ' + pct(d.guest ? d.closed/d.guest : 0)
+              ];
+            }
+          }
+        }
+      },
+      scales:{
+        x:{
+          stacked:true,
+          ticks:{maxRotation:55,minRotation:35}
+        },
+        y:{
+          stacked:false,
+          beginAtZero:true
+        }
+      }
+    }
+  });
+
   byId('guestTable').innerHTML = sourceData.map(d=>{
     const closeRate = d.guest ? d.closed/d.guest : 0;
     return '<tr class="table-row border-b"><td class="py-3 font-bold">'+escapeHtml(d.source)+'</td><td>'+Math.round(d.guest).toLocaleString()+'</td><td>'+Math.round(d.closed).toLocaleString()+'</td><td>'+pct(closeRate)+'</td><td>'+(d.guest && closeRate<0.18?'Improve follow-up script':'Scale this source')+'</td></tr>';
   }).join('');
 }
+
 function renderRanking(rows){
   const sorted=[...rows].sort((a,b)=>cashTotal(b)-cashTotal(a));
   const top=sorted.slice(0,10), bottom=sorted
