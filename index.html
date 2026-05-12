@@ -152,6 +152,26 @@
           </div>
           <canvas id="guestClubChart" height="180"></canvas>
         </div>
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Month on Month</div>
+              <h2 class="text-xl font-black">Guest Source MoM</h2>
+              <p class="text-xs text-gray-400 mt-1">Grouped bars: current month vs last month same-day, split into major and minor sources for readability.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Current vs LM</span>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div>
+              <div class="text-sm font-bold text-gray-500 mb-2">Major Sources</div>
+              <canvas id="guestSourceMomMajorChart" height="160"></canvas>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-gray-500 mb-2">Minor Sources</div>
+              <canvas id="guestSourceMomMinorChart" height="160"></canvas>
+            </div>
+          </div>
+        </div>
         <div class="card p-5 lg:col-span-3"><div class="mini-label">Guest Table</div><h2 class="text-xl font-black mb-4">Source Performance Detail</h2><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-3">Source</th><th>Guest</th><th>NMU / Closed</th><th>Close Rate</th><th>Action Signal</th></tr></thead><tbody id="guestTable"></tbody></table></div></div>
       </section>
 
@@ -1089,6 +1109,90 @@ function aggregateGuestSourceData(actualRows){
 
 
 
+
+function guestRowsForMonthWithCurrentFilters(month){
+  if(!month) return [];
+
+  const region = byId('regionFilter') ? byId('regionFilter').value : 'ALL';
+  const club = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
+  const selectedDay = getSelectedDay();
+  const viewMode = getViewMode();
+
+  return guestData.filter(r=>{
+    if(r.month !== month) return false;
+    if(region !== 'ALL' && r.region !== region) return false;
+    if(club !== 'ALL' && String(r.club).toUpperCase() !== String(club).toUpperCase()) return false;
+    if(CLOSED_CLUBS.includes(String(r.club).toUpperCase())) return false;
+
+    if(selectedDay !== 'ALL'){
+      const cutoff = Math.min(Number(selectedDay), daysInMonth(month));
+      if(viewMode === 'DAILY' && r.day !== cutoff) return false;
+      if(viewMode !== 'DAILY' && r.day > cutoff) return false;
+    }
+
+    return true;
+  });
+}
+
+function aggregateGuestSourceDataFromRows(rows){
+  const map = new Map();
+
+  rows.forEach(r=>{
+    const label = guestSourceLabel(r);
+
+    if(!map.has(label)){
+      map.set(label,{source:label,guest:0,closed:0});
+    }
+
+    const x = map.get(label);
+
+    if(isNmuRow(r)){
+      x.closed += safeNumber(r.value);
+    }else if(isGuestRow(r)){
+      x.guest += safeNumber(r.value);
+    }
+  });
+
+  return Array.from(map.values())
+    .filter(x=>x.guest || x.closed)
+    .sort((a,b)=>b.guest-a.guest);
+}
+
+function aggregateGuestSourceMomData(){
+  const currentMonth = getPeriod();
+  const lastMonth = previousMonthString(currentMonth);
+
+  if(!currentMonth || currentMonth === 'ALL' || !lastMonth){
+    return {lastMonth:null, rows:[]};
+  }
+
+  const current = aggregateGuestSourceDataFromRows(guestRowsForMonthWithCurrentFilters(currentMonth));
+  const lm = aggregateGuestSourceDataFromRows(guestRowsForMonthWithCurrentFilters(lastMonth));
+
+  const sourceSet = new Set();
+  current.forEach(x=>sourceSet.add(x.source));
+  lm.forEach(x=>sourceSet.add(x.source));
+
+  const currentMap = new Map(current.map(x=>[x.source,x]));
+  const lmMap = new Map(lm.map(x=>[x.source,x]));
+
+  const rows = Array.from(sourceSet).map(source=>{
+    const c = currentMap.get(source) || {guest:0,closed:0};
+    const p = lmMap.get(source) || {guest:0,closed:0};
+    return {
+      source,
+      currentGuest:safeNumber(c.guest),
+      lastMonthGuest:safeNumber(p.guest),
+      currentNmu:safeNumber(c.closed),
+      lastMonthNmu:safeNumber(p.closed)
+    };
+  }).filter(x=>x.currentGuest || x.lastMonthGuest)
+    .sort((a,b)=>b.currentGuest-a.currentGuest);
+
+  return {lastMonth, rows};
+}
+
+
 function aggregateGuestClubData(){
   const rows = guestRowsForCurrentFilter();
   const clubMap = new Map();
@@ -1713,18 +1817,56 @@ function renderPtss(rows){
     bottom5.map(d=>'<div class="flex justify-between text-sm py-1"><span>'+d.club+'</span><span>'+Math.round(d.ptss).toLocaleString()+'</span></div>').join('') +
     '</div>';
 }
+
+function guestSourceColor(source){
+  const s = String(source || '').toLowerCase();
+  if(s.includes('appointment')) return '#2563EB';
+  if(s.includes('digital')) return '#DB2777';
+  if(s.includes('partner')) return '#EA580C';
+  if(s.includes('walk')) return '#CA8A04';
+  if(s.includes('tele')) return '#0D9488';
+  if(s.includes('survey')) return '#7C3AED';
+  if(s.includes('aff')) return '#6B7280';
+  if(s.includes('referral')) return '#1D4ED8';
+  if(s.includes('lwt')) return '#16A34A';
+
+  const fallback = ['#0284C7','#059669','#F97316','#4F46E5','#65A30D','#0891B2','#9333EA','#475569'];
+  let hash = 0;
+  for(let i=0;i<s.length;i++) hash = (hash + s.charCodeAt(i) * (i + 1)) % fallback.length;
+  return fallback[hash];
+}
+
+function hexToRgba(hex, alpha){
+  const h = String(hex || '').replace('#','');
+  if(h.length !== 6) return hex;
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+
 function renderGuest(rows){
   const sourceData = aggregateGuestSourceData(rows);
   const topSources = sourceData.slice(0,8);
   const clubAgg = aggregateGuestClubData();
   const clubData = clubAgg.clubs.slice(0,20);
   const clubSources = clubAgg.sources.slice(0,8);
+  const momData = aggregateGuestSourceMomData();
+  const momRows = momData.rows;
+  const majorRows = momRows.slice(0,4);
+  const minorRows = momRows.slice(4,12);
 
   drawChart('guestSourceChart',{
     type:'doughnut',
     data:{
       labels:topSources.map(d=>d.source),
-      datasets:[{data:topSources.map(d=>d.guest)}]
+      datasets:[{
+        data:topSources.map(d=>d.guest),
+        backgroundColor:topSources.map(d=>guestSourceColor(d.source)),
+        borderColor:'#ffffff',
+        borderWidth:2
+      }]
     },
     options:{
       responsive:true,
@@ -1737,14 +1879,17 @@ function renderGuest(rows){
     data:{
       labels:topSources.map(d=>d.source),
       datasets:[
-        {label:'Guest',data:topSources.map(d=>d.guest),borderRadius:10},
-        {label:'NMU / Closed',data:topSources.map(d=>d.closed),borderRadius:10}
+        {label:'Guest',data:topSources.map(d=>d.guest),borderRadius:10,backgroundColor:'#60A5FA',borderColor:'#2563EB',borderWidth:1},
+        {label:'NMU / Closed',data:topSources.map(d=>d.closed),borderRadius:10,backgroundColor:'#FB7185',borderColor:'#E11D48',borderWidth:1}
       ]
     },
     options:{
       responsive:true,
       plugins:{legend:{position:'bottom'}},
-      scales:{y:{beginAtZero:true}}
+      scales:{
+        x:{grid:{display:false}},
+        y:{beginAtZero:true,grid:{color:'rgba(148,163,184,.18)'}}
+      }
     }
   });
 
@@ -1753,55 +1898,128 @@ function renderGuest(rows){
     data:{
       labels:clubData.map(d=>d.club),
       datasets:[
-        ...clubSources.map(source=>({
-          type:'bar',
-          label:source,
-          data:clubData.map(d=>safeNumber(d.sources[source])),
-          stack:'guest',
-          borderRadius:6,
-          yAxisID:'y'
-        })),
+        ...clubSources.map(source=>{
+          const color = guestSourceColor(source);
+          return {
+            type:'bar',
+            label:source,
+            data:clubData.map(d=>safeNumber(d.sources[source])),
+            stack:'guest',
+            borderRadius:4,
+            yAxisID:'y',
+            backgroundColor:hexToRgba(color,.78),
+            borderColor:color,
+            borderWidth:1,
+            hoverBackgroundColor:hexToRgba(color,.95)
+          };
+        }),
         {
           type:'line',
           label:'NMU / Closed',
           data:clubData.map(d=>safeNumber(d.closed)),
           tension:.35,
-          borderWidth:3,
-          pointRadius:4,
-          yAxisID:'y'
+          borderWidth:5,
+          pointRadius:5,
+          pointHoverRadius:8,
+          yAxisID:'y1',
+          borderColor:'#E00022',
+          backgroundColor:'#E00022',
+          pointBackgroundColor:'#E00022',
+          pointBorderColor:'#ffffff',
+          pointBorderWidth:2,
+          order:0
         }
       ]
     },
     options:{
       responsive:true,
+      interaction:{mode:'index',intersect:false},
       plugins:{
-        legend:{position:'bottom'},
+        legend:{position:'bottom',labels:{boxWidth:18,boxHeight:12}},
         tooltip:{
           callbacks:{
             afterBody:function(items){
               const idx = items && items.length ? items[0].dataIndex : 0;
-              const d = clubData[idx] || {guest:0,closed:0};
+              const d = clubData[idx] || {guest:0,closed:0,sources:{}};
+              const breakdown = clubSources
+                .map(source=>({source:source,value:safeNumber(d.sources[source])}))
+                .filter(x=>x.value > 0)
+                .sort((a,b)=>b.value-a.value)
+                .slice(0,4)
+                .map(x=>'• ' + x.source + ': ' + Math.round(x.value).toLocaleString());
+
               return [
                 'Total Guest: ' + Math.round(safeNumber(d.guest)).toLocaleString(),
                 'NMU / Closed: ' + Math.round(safeNumber(d.closed)).toLocaleString(),
-                'Close rate: ' + pct(d.guest ? d.closed/d.guest : 0)
+                'Close rate: ' + pct(d.guest ? d.closed/d.guest : 0),
+                ...breakdown
               ];
             }
           }
         }
       },
       scales:{
-        x:{
-          stacked:true,
-          ticks:{maxRotation:55,minRotation:35}
-        },
-        y:{
-          stacked:false,
-          beginAtZero:true
-        }
+        x:{stacked:true,grid:{display:false},ticks:{maxRotation:55,minRotation:35}},
+        y:{stacked:true,beginAtZero:true,position:'left',title:{display:true,text:'Guest'},grid:{color:'rgba(148,163,184,.18)'}},
+        y1:{beginAtZero:true,position:'right',title:{display:true,text:'NMU / Closed'},grid:{drawOnChartArea:false}}
       }
     }
   });
+
+  function drawMomBarChart(canvasId, chartRows, titleLabel){
+    drawChart(canvasId,{
+      type:'bar',
+      data:{
+        labels:chartRows.map(d=>d.source),
+        datasets:[
+          {
+            label:'Current Month',
+            data:chartRows.map(d=>d.currentGuest),
+            borderRadius:9,
+            backgroundColor:'#2563EB',
+            borderColor:'#1D4ED8',
+            borderWidth:1
+          },
+          {
+            label:'Last Month Same-day',
+            data:chartRows.map(d=>d.lastMonthGuest),
+            borderRadius:9,
+            backgroundColor:'#F97316',
+            borderColor:'#EA580C',
+            borderWidth:1
+          }
+        ]
+      },
+      options:{
+        responsive:true,
+        interaction:{mode:'index',intersect:false},
+        plugins:{
+          legend:{position:'bottom'},
+          tooltip:{
+            callbacks:{
+              afterBody:function(items){
+                const idx = items && items.length ? items[0].dataIndex : 0;
+                const d = chartRows[idx] || {currentGuest:0,lastMonthGuest:0,currentNmu:0};
+                const change = d.lastMonthGuest ? (d.currentGuest - d.lastMonthGuest) / d.lastMonthGuest : null;
+                return [
+                  'Current NMU: ' + Math.round(safeNumber(d.currentNmu)).toLocaleString(),
+                  'Current Close Rate: ' + pct(d.currentGuest ? d.currentNmu/d.currentGuest : 0),
+                  'MoM Change: ' + (change === null ? 'N/A' : pct(change))
+                ];
+              }
+            }
+          }
+        },
+        scales:{
+          x:{grid:{display:false},ticks:{maxRotation:45,minRotation:25}},
+          y:{beginAtZero:true,grid:{color:'rgba(148,163,184,.18)'}}
+        }
+      }
+    });
+  }
+
+  drawMomBarChart('guestSourceMomMajorChart', majorRows, 'Major Sources');
+  drawMomBarChart('guestSourceMomMinorChart', minorRows, 'Minor Sources');
 
   byId('guestTable').innerHTML = sourceData.map(d=>{
     const closeRate = d.guest ? d.closed/d.guest : 0;
