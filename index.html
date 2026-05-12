@@ -7,32 +7,88 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root{--red:#d71920;--ink:#111827;--muted:#6b7280;}
+    :root{
+      --cali-red:#D71920;
+      --cali-red-dark:#A70F15;
+      --cali-soft:#FFF1F2;
+      --cali-black:#0B0B0F;
+      --ink:#0F172A;
+      --muted:#667085;
+      --line:#E7E9EE;
+      --bg:#F5F6F8;
+    }
     *{box-sizing:border-box}
-    body{margin:0;font-family:Inter,Arial,sans-serif;background:#f3f4f6;color:var(--ink)}
-    .hero{background:linear-gradient(135deg,#111 0%,#2b0d0f 54%,#d71920 140%)}
-    .card{background:white;border:1px solid #ececec;border-radius:22px;box-shadow:0 10px 30px rgba(15,23,42,.06)}
-    .mini-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:800}
-    .metric{font-size:28px;font-weight:950;letter-spacing:-.04em}
-    .tab{transition:.18s ease}.tab.active{background:var(--red);color:white;box-shadow:0 10px 24px rgba(215,25,32,.22)}
-    .badge-up{background:#ecfdf5;color:#047857}.badge-down{background:#fef2f2;color:#b91c1c}.badge-neutral{background:#f3f4f6;color:#374151}
-    .table-row:hover{background:#fff7f7} select,input{outline:none}
-  
-    .login-overlay{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#111 0%,#2b0d0f 55%,#d71920 145%);display:flex;align-items:center;justify-content:center;padding:24px}
-    .login-box{width:100%;max-width:430px;background:white;border-radius:28px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--ink);overflow-x:hidden}
+    .app-shell{min-height:100vh;display:grid;grid-template-columns:220px minmax(0,1fr);background:radial-gradient(circle at top right,rgba(215,25,32,.10),transparent 34%),linear-gradient(180deg,#F8F8FA 0%,#F2F3F5 100%)}
+    .sidebar{position:sticky;top:0;height:100vh;background:linear-gradient(180deg,#111116 0%,#1E0709 58%,#5A080C 100%);border-right:1px solid rgba(255,255,255,.08);padding:28px 16px;display:flex;flex-direction:column;gap:22px;box-shadow:16px 0 44px rgba(12,12,18,.16);z-index:20}
+    .brand-mark{display:flex;flex-direction:column;gap:3px;padding:10px 8px 18px;border-bottom:1px solid rgba(255,255,255,.10)}
+    .brand-kicker{font-size:10px;letter-spacing:.20em;font-weight:950;color:#FCA5A5;text-transform:uppercase}
+    .brand-title{font-size:19px;line-height:1.05;font-weight:950;letter-spacing:-.04em;color:#fff}
+    .brand-title span{color:#F43F46}
+    .sidebar-menu{display:flex;flex-direction:column;gap:8px}
+    .tab{width:100%;display:flex;align-items:center;gap:11px;border:1px solid transparent;background:transparent;color:#E5E7EB;border-radius:16px;padding:13px 14px;font-size:14px;font-weight:900;transition:.18s ease;text-align:left}
+    .tab:hover{background:rgba(255,255,255,.08);color:#fff;border-color:rgba(255,255,255,.10)}
+    .tab.active{background:linear-gradient(135deg,var(--cali-red),var(--cali-red-dark));color:#fff;box-shadow:0 14px 28px rgba(215,25,32,.34);border-color:rgba(255,255,255,.10)}
+    .tab .ico{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;opacity:.9}
+    .sidebar-footer{margin-top:auto;padding:14px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.10);color:#D1D5DB;font-size:11px;line-height:1.45}
+    .main-area{min-width:0;padding:24px 26px 44px}
+    .topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:18px}
+    .page-kicker{font-size:11px;letter-spacing:.20em;color:var(--cali-red);font-weight:950;text-transform:uppercase}
+    .page-title{margin:2px 0 6px;font-size:32px;line-height:1.05;font-weight:950;letter-spacing:-.045em;color:#0B0B0F}
+    .page-subtitle{color:#64748B;font-size:14px;line-height:1.45}
+    .status-card{min-width:320px;background:linear-gradient(135deg,#1A0A0C 0%,#5D0A0E 68%,#A70F15 140%);border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:18px 20px;box-shadow:0 18px 42px rgba(215,25,32,.18);color:#fff}
+    .status-card .label{font-size:11px;letter-spacing:.15em;font-weight:950;color:#FECACA;text-transform:uppercase}
+    .status-card .value{margin-top:4px;font-size:30px;font-weight:950;letter-spacing:-.04em;color:#fff}
+    .status-card .desc{font-size:13px;color:#FFF1F2;font-weight:800}
+    .status-card #dataStatus{margin-top:9px;color:#FECACA;font-size:11px;line-height:1.35}
+    .filter-card{background:#fff;border:1px solid var(--line);border-radius:24px;padding:16px;margin-bottom:18px;box-shadow:0 12px 30px rgba(15,23,42,.05)}
+    .filter-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;align-items:end}
+    .filter-field label,.mini-label{font-size:11px;letter-spacing:.095em;text-transform:uppercase;color:#667085;font-weight:950}
+    select,input{outline:none}
+    .filter-control{margin-top:7px;width:100%;border:1px solid var(--line);background:#FBFBFC;border-radius:16px;padding:12px 13px;color:#0F172A;font-weight:850;transition:.16s ease}
+    .filter-control:focus{border-color:var(--cali-red);box-shadow:0 0 0 4px rgba(215,25,32,.10);background:#fff}
+    .apply-btn{background:linear-gradient(135deg,var(--cali-red),var(--cali-red-dark));color:#fff;border-radius:16px;padding:13px 16px;font-weight:950;box-shadow:0 14px 28px rgba(215,25,32,.25);transition:.16s ease}
+    .apply-btn:hover{filter:brightness(.96);transform:translateY(-1px)}
+    .card{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 14px 36px rgba(15,23,42,.055)}
+    .metric{font-size:28px;font-weight:950;letter-spacing:-.045em;color:#0B0B0F}
+    #kpiCards .card{min-height:116px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden}
+    #kpiCards .card:before{content:"";position:absolute;right:-24px;top:-24px;width:86px;height:86px;border-radius:999px;background:rgba(215,25,32,.075)}
+    .badge-up{background:#ECFDF5;color:#047857}
+    .badge-down{background:#FFF1F2;color:#BE123C}
+    .badge-neutral{background:#F1F5F9;color:#334155}
+    .table-row:hover{background:#FFF7F7}
+    .login-overlay{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#111116 0%,#2B0D0F 55%,#D71920 145%);display:flex;align-items:center;justify-content:center;padding:24px}
+    .login-box{width:100%;max-width:430px;background:#fff;border-radius:28px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
     .login-input{width:100%;border:1px solid #e5e7eb;border-radius:16px;padding:14px 16px;margin-top:8px;font-size:16px}
-    .login-btn{width:100%;background:#d71920;color:white;border-radius:16px;padding:15px 16px;font-weight:900;margin-top:18px}
+    .login-btn{width:100%;background:linear-gradient(135deg,var(--cali-red),var(--cali-red-dark));color:#fff;border-radius:16px;padding:15px 16px;font-weight:950;margin-top:18px}
     .login-error{display:none;color:#b91c1c;background:#fef2f2;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-top:12px}
-
+    .pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;background:#FFF1F2;color:#B91C1C;font-size:12px;font-weight:950;white-space:nowrap}
+    canvas{max-width:100%}
+    @media(max-width:1100px){
+      .app-shell{grid-template-columns:1fr}
+      .sidebar{position:relative;height:auto;flex-direction:row;align-items:center;overflow-x:auto;padding:14px}
+      .brand-mark{min-width:190px;padding:6px 10px;border-bottom:0;border-right:1px solid rgba(255,255,255,.10)}
+      .sidebar-menu{flex-direction:row;min-width:max-content}
+      .sidebar-footer{display:none}
+      .main-area{padding:18px}
+      .topbar{flex-direction:column}
+      .status-card{min-width:0;width:100%}
+      .filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    }
+    @media(max-width:640px){.filter-grid{grid-template-columns:1fr}.page-title{font-size:26px}}
   </style>
 </head>
 <body>
+<!-- 
+UPLOAD YOUR CALIFORNIA LOGO INTO SAME GITHUB FOLDER:
+logo.png
+-->
 
   <div id="loginOverlay" class="login-overlay">
     <div class="login-box">
       <div class="text-xs uppercase tracking-[.25em] text-red-600 font-black">California Fitness & Yoga</div>
       <h1 class="text-3xl font-black tracking-tight mt-2 text-gray-900">Performance Dashboard</h1>
-      <p class="text-sm text-gray-500 mt-2">Please sign in to access the commercial performance command center.</p>
+      <p class="text-sm text-gray-500 mt-2">Please sign in to access the commercial performance Dashboard.</p>
 
       <div class="mt-6">
         <label class="mini-label">Username</label>
@@ -53,47 +109,69 @@
     </div>
   </div>
 
-  <div class="min-h-screen">
-    <header class="hero text-white px-6 py-7 md:px-10">
-      <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <div class="text-xs uppercase tracking-[.25em] text-red-100 font-bold">California Fitness & Yoga</div>
-            <h1 class="text-3xl md:text-5xl font-black tracking-tight mt-1">Performance Command Center</h1>
-            <p class="text-red-50 mt-2 max-w-2xl">Dashboard đọc dữ liệu trực tiếp từ JSON: data.json, target.json và Guest.json.</p>
-          </div>
-          <div class="bg-white/10 border border-white/15 rounded-2xl p-4 min-w-[240px]">
-            <div class="text-xs text-red-100 uppercase tracking-widest font-bold">Selected Period</div>
-            <div class="text-3xl font-black mt-1" id="headerTotal">$0</div>
-            <div class="text-sm text-red-50">Total NMS + PT Sales | USD</div>
-            <div id="dataStatus" class="text-xs text-red-100 mt-2">Loading JSON data...</div>
-          </div>
-        </div>
-      </div>
-    </header>
+  <div class="app-shell">
+    <aside class="sidebar">
+      
 
-    <main class="max-w-7xl mx-auto px-4 md:px-8 -mt-5 pb-12">
-      <section class="card p-4 md:p-5 mb-5">
-        <div class="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
-          <div><label class="mini-label">Period</label><select id="periodFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
-          <div><label class="mini-label">View</label><select id="viewModeFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"><option value="MTD">MTD</option><option value="DAILY">Daily</option></select></div>
-          <div><label class="mini-label">Day</label><select id="dayFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
-          <div><label class="mini-label">Compare</label><select id="compareFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"><option value="LM">vs Last Month</option><option value="LY">vs Last Year</option><option value="TARGET">vs Target</option></select></div>
-          <div><label class="mini-label">Region</label><select id="regionFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
-          <div><label class="mini-label">Club</label><select id="clubFilter" class="mt-1 w-full border border-gray-200 rounded-xl px-3 py-3 bg-white"></select></div>
-          <button id="applyBtn" class="bg-[#d71920] hover:bg-[#b9141a] text-white rounded-xl px-4 py-3 font-bold">Apply Filter</button>
+<div class="brand-mark">
+  <div style="
+    background:#ffffff;
+    border-radius:20px;
+    padding:14px 14px 12px;
+    margin:2px 0 16px;
+    box-shadow:0 18px 34px rgba(215,25,32,.20);
+    border:1px solid rgba(255,255,255,.18);
+  ">
+    <img src="logo.png"
+         alt="California Fitness Logo"
+         style="width:168px;max-width:100%;display:block;object-fit:contain;">
+  </div>
+
+  <div style="font-size:31px;line-height:.96;font-weight:1000;color:#ffffff;letter-spacing:-.05em;">
+    Performance
+  </div>
+
+  <div style="font-size:31px;line-height:.96;font-weight:1000;color:#F43F46;letter-spacing:-.05em;">
+    Dashboard
+  </div>
+</div>
+
+      <nav class="sidebar-menu">
+        <button class="tab active" data-tab="cash"><span class="ico">⌂</span><span>Cash Collection</span></button>
+        <button class="tab" data-tab="ptss"><span class="ico">▣</span><span>PT Sessions</span></button>
+        <button class="tab" data-tab="guest"><span class="ico">◇</span><span>Guest Sources</span></button>
+        <button class="tab" data-tab="club"><span class="ico">▤</span><span>Club Ranking</span></button>
+        <button class="tab" data-tab="ai"><span class="ico">✦</span><span>AI Insights</span></button>
+      </nav>
+      <div class="sidebar-footer">Commercial dashboard powered by JSON data, same-day comparison and target tracking.</div>
+    </aside>
+    <main class="main-area">
+      <section class="topbar">
+        <div>
+          <div class="page-kicker">California Fitness & Yoga</div>
+          <h1 class="page-title">Performance Dashboard</h1>
+          <p class="page-subtitle">Commercial Performance Intelligence Dashboard · JSON powered · MTD / Daily / Same-day comparison</p>
+        </div>
+        <div class="status-card">
+          <div class="label">Selected Period</div>
+          <div class="value" id="headerTotal">$0</div>
+          <div class="desc">Total NMS + PT Sales | USD</div>
+          <div id="dataStatus">Loading JSON data...</div>
+        </div>
+      </section>
+      <section class="filter-card">
+        <div class="filter-grid">
+          <div class="filter-field"><label>Period</label><select id="periodFilter" class="filter-control"></select></div>
+          <div class="filter-field"><label>View</label><select id="viewModeFilter" class="filter-control"><option value="MTD">MTD</option><option value="DAILY">Daily</option></select></div>
+          <div class="filter-field"><label>Day</label><select id="dayFilter" class="filter-control"></select></div>
+          <div class="filter-field"><label>Compare</label><select id="compareFilter" class="filter-control"><option value="LM">vs Last Month</option><option value="LY">vs Last Year</option><option value="TARGET">vs Target</option></select></div>
+          <div class="filter-field"><label>Region</label><select id="regionFilter" class="filter-control"></select></div>
+          <div class="filter-field"><label>Club</label><select id="clubFilter" class="filter-control"></select></div>
+          <button id="applyBtn" class="apply-btn">Apply Filter</button>
         </div>
       </section>
 
       <section class="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4 mb-5" id="kpiCards"></section>
-
-      <nav class="flex flex-wrap gap-2 mb-5">
-        <button class="tab active px-5 py-3 rounded-2xl bg-white border border-gray-200 font-extrabold" data-tab="cash">Cash Collection</button>
-        <button class="tab px-5 py-3 rounded-2xl bg-white border border-gray-200 font-extrabold" data-tab="ptss">PT Sessions Served</button>
-        <button class="tab px-5 py-3 rounded-2xl bg-white border border-gray-200 font-extrabold" data-tab="guest">Guest Sources</button>
-        <button class="tab px-5 py-3 rounded-2xl bg-white border border-gray-200 font-extrabold" data-tab="club">Club Ranking</button>
-        <button class="tab px-5 py-3 rounded-2xl bg-white border border-gray-200 font-extrabold" data-tab="ai">AI Insights</button>
-      </nav>
 
       <section id="cash" class="tabPanel grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="card p-5 lg:col-span-2">
@@ -1879,7 +1957,7 @@ function renderGuest(rows){
     data:{
       labels:topSources.map(d=>d.source),
       datasets:[
-        {label:'Guest',data:topSources.map(d=>d.guest),borderRadius:10,backgroundColor:'#60A5FA',borderColor:'#2563EB',borderWidth:1},
+        {label:'Guest',data:topSources.map(d=>d.guest),borderRadius:10,backgroundColor:'#D71920',borderColor:'#A70F15',borderWidth:1},
         {label:'NMU / Closed',data:topSources.map(d=>d.closed),borderRadius:10,backgroundColor:'#FB7185',borderColor:'#E11D48',borderWidth:1}
       ]
     },
@@ -1976,16 +2054,16 @@ function renderGuest(rows){
             label:'Current Month',
             data:chartRows.map(d=>d.currentGuest),
             borderRadius:9,
-            backgroundColor:'#2563EB',
-            borderColor:'#1D4ED8',
+            backgroundColor:'#D71920',
+            borderColor:'#A70F15',
             borderWidth:1
           },
           {
             label:'Last Month Same-day',
             data:chartRows.map(d=>d.lastMonthGuest),
             borderRadius:9,
-            backgroundColor:'#F97316',
-            borderColor:'#EA580C',
+            backgroundColor:'#111827',
+            borderColor:'#111827',
             borderWidth:1
           }
         ]
