@@ -155,7 +155,7 @@ logo.png
         <div class="status-card">
           <div class="label">Selected Period</div>
           <div class="value" id="headerTotal">$0</div>
-          <div class="desc">Total NMS + PT Sales | USD</div>
+          <div class="desc" id="headerDesc">Total NMS + PT Sales | USD</div>
           <div id="dataStatus">Loading CSV data...</div>
         </div>
       </section>
@@ -327,6 +327,7 @@ const CONFIG = {
 };
 const charts = {};
 let activeTab = 'cash';
+let currentUserRole = 'full';
 let allData = [];
 let data = [];
 let targetData = [];
@@ -1589,57 +1590,146 @@ function setupFilters(){
   if(clubProductFilter) clubProductFilter.addEventListener('change', renderDashboard);
   byId('searchClub').addEventListener('input', renderClubTable);
   document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{
-    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    activeTab = btn.dataset.tab;
-    document.querySelectorAll('.tabPanel').forEach(p=>p.classList.add('hidden'));
-    byId(activeTab).classList.remove('hidden');
+    if(currentUserRole === 'guest_only' && btn.dataset.tab !== 'guest') return;
+    switchToTab(btn.dataset.tab);
     renderDashboard();
   }));
 }
 function renderCards(rows){
   const membership=sum(rows,'membership'), pt=sum(rows,'ptSales'), total=cashTotalRows(rows), ptss=sum(rows,'ptss'), guest=sum(rows,'guest'), nmu=sum(rows,'nmu');
   const closeRate = guest ? nmu / guest : 0;
-  byId('headerTotal').textContent = money(total);
-
   const compareMode = byId('compareFilter').value;
+  const periodText = getPeriod() === 'ALL' ? 'All Periods' : (getViewMode() === 'DAILY' ? getPeriod() + ' · Day ' + String(getEffectiveCutoffDay(getPeriod())).padStart(2,'0') : getPeriod() + ' · MTD D' + getEffectiveCutoffDay(getPeriod()));
   let cards;
 
-  if(compareMode === 'LM'){
-    const lm = getLastMonthMetrics();
-    const label = lm ? 'vs LM D'+lm.cutoff : 'vs LM';
-    cards = [
-      ['Total Cash', money(total), compareBadgeDetailed(lm ? comparePct(total,lm.cash) : null, label, lm ? signedMoney(total-lm.cash)+' vs '+lm.month : '')],
-      ['Membership Sales', money(membership), compareBadgeDetailed(lm ? comparePct(membership,lm.membership) : null, label, lm ? signedMoney(membership-lm.membership)+' vs '+lm.month : '')],
-      ['PT Sales', money(pt), compareBadgeDetailed(lm ? comparePct(pt,lm.ptSales) : null, label, lm ? signedMoney(pt-lm.ptSales)+' vs '+lm.month : '')],
-      ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(lm ? comparePct(ptss,lm.ptss) : null, label, lm ? signedNumber(ptss-lm.ptss)+' sessions' : '')],
-      ['Guest Close Rate', pct(closeRate), compareBadgeDetailed(lm ? comparePct(closeRate,lm.closeRate) : null, label, lm ? signedPctPoint(closeRate-lm.closeRate)+' vs '+lm.month : '')]
-    ];
-  }else if(compareMode === 'TARGET'){
-    const targetCash = targetSum('cashTarget');
-    const targetMembership = targetSum('membershipTarget');
-    const targetPt = targetSum('ptTarget');
-    const targetPtss = targetSum('ptssTarget');
-    const targetGuest = targetSum('guestTarget');
-    const targetNmu = targetSum('nmuTarget');
-    const targetCloseRate = targetGuest ? targetNmu / targetGuest : 0;
+  function setHeader(value, desc){
+    byId('headerTotal').textContent = value;
+    const descEl = byId('headerDesc');
+    if(descEl) descEl.textContent = desc;
+  }
 
-    cards = [
-      ['Total Cash', money(total), compareBadgeDetailed(targetCash ? total/targetCash - 1 : null, 'vs Target', targetCash ? money(targetCash)+' target · '+pct(total/targetCash) : 'No target data')],
-      ['Membership Sales', money(membership), compareBadgeDetailed(targetMembership ? membership/targetMembership - 1 : null, 'vs Target', targetMembership ? money(targetMembership)+' target · '+pct(membership/targetMembership) : 'No target data')],
-      ['PT Sales', money(pt), compareBadgeDetailed(targetPt ? pt/targetPt - 1 : null, 'vs Target', targetPt ? money(targetPt)+' target · '+pct(pt/targetPt) : 'No target data')],
-      ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(targetPtss ? ptss/targetPtss - 1 : null, 'vs Target', targetPtss ? Math.round(targetPtss).toLocaleString()+' target · '+pct(ptss/targetPtss) : 'No target data')],
-      ['Guest Close Rate', pct(closeRate), compareBadgeDetailed(targetCloseRate ? closeRate/targetCloseRate - 1 : null, 'vs Target', targetGuest ? Math.round(targetNmu).toLocaleString()+'/'+Math.round(targetGuest).toLocaleString()+' target NMU/Guest' : 'No target data')]
-    ];
+  // TAB-SPECIFIC KPI CARDS
+  // Cash Collection keeps the original revenue view.
+  // PT Sessions and Guest Sources now show their own operating metrics instead of repeating cash collection cards.
+  if(activeTab === 'ptss'){
+    const activeClubRows = rows.filter(r=>!CLOSED_CLUBS.includes(String(r.club).toUpperCase()));
+    const activeClubs = activeClubRows.filter(r=>safeNumber(r.ptss) > 0).length || activeClubRows.length || 1;
+    const ptssPerK = pt ? ptss / (pt / 1000) : 0;
+    const avgPtssClub = ptss / activeClubs;
+    const sortedPtss = [...activeClubRows].sort((a,b)=>safeNumber(b.ptss)-safeNumber(a.ptss));
+    const best = sortedPtss[0];
+    setHeader(Math.round(ptss).toLocaleString(), 'Total PT Sessions Served');
+
+    if(compareMode === 'LM'){
+      const lm = getLastMonthMetrics();
+      const label = lm ? 'vs LM D'+lm.cutoff : 'vs LM';
+      const lmPtssPerK = lm && lm.ptSales ? lm.ptss / (lm.ptSales / 1000) : null;
+      cards = [
+        ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(lm ? comparePct(ptss,lm.ptss) : null, label, lm ? signedNumber(ptss-lm.ptss)+' sessions vs '+lm.month : '')],
+        ['PT Sales', money(pt), compareBadgeDetailed(lm ? comparePct(pt,lm.ptSales) : null, label, lm ? signedMoney(pt-lm.ptSales)+' vs '+lm.month : '')],
+        ['Active PTSS Clubs', activeClubs.toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Clubs with PTSS</span>'],
+        ['Avg PTSS / Active Club', avgPtssClub.toFixed(0), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+activeClubs+' active clubs</span>'],
+        ['Top PTSS Club', best ? best.club : '-', '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+(best ? Math.round(best.ptss).toLocaleString()+' sessions' : 'No PTSS')+'</span>']
+      ];
+    }else if(compareMode === 'TARGET'){
+      const targetPtss = targetSum('ptssTarget');
+      const targetPt = targetSum('ptTarget');
+      cards = [
+        ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(targetPtss ? ptss/targetPtss - 1 : null, 'vs Target', targetPtss ? Math.round(targetPtss).toLocaleString()+' target · '+pct(ptss/targetPtss) : 'No PTSS target')],
+        ['PT Sales', money(pt), compareBadgeDetailed(targetPt ? pt/targetPt - 1 : null, 'vs Target', targetPt ? money(targetPt)+' target · '+pct(pt/targetPt) : 'No PT target')],
+        ['Active PTSS Clubs', activeClubs.toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Clubs with PTSS</span>'],
+        ['Avg PTSS / Active Club', avgPtssClub.toFixed(0), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+activeClubs+' active clubs</span>'],
+        ['Top PTSS Club', best ? best.club : '-', '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+(best ? Math.round(best.ptss).toLocaleString()+' sessions' : 'No PTSS')+'</span>']
+      ];
+    }else{
+      cards = [
+        ['PTSS Served', Math.round(ptss).toLocaleString(), '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+periodText+'</span>'],
+        ['PT Sales', money(pt), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">PT revenue support</span>'],
+        ['Active PTSS Clubs', activeClubs.toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Clubs with PTSS</span>'],
+        ['Avg PTSS / Active Club', avgPtssClub.toFixed(0), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+activeClubs+' active clubs</span>'],
+        ['Top PTSS Club', best ? best.club : '-', '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+(best ? Math.round(best.ptss).toLocaleString()+' sessions' : 'No PTSS')+'</span>']
+      ];
+    }
+  }else if(activeTab === 'guest'){
+    const sourceData = aggregateGuestSourceData(rows);
+    const guestTotal = sourceData.reduce((a,b)=>a + safeNumber(b.guest),0);
+    const closedTotal = sourceData.reduce((a,b)=>a + safeNumber(b.closed),0);
+    const close = guestTotal ? closedTotal / guestTotal : 0;
+    const clubAgg = aggregateGuestClubData();
+    const clubCount = clubAgg.clubs.length;
+    const topSource = sourceData[0];
+    const mom = aggregateGuestSourceMomData();
+    const lmGuest = mom.rows.reduce((a,b)=>a + safeNumber(b.lastMonthGuest),0);
+    const lmNmu = mom.rows.reduce((a,b)=>a + safeNumber(b.lastMonthNmu),0);
+    const lmClose = lmGuest ? lmNmu / lmGuest : null;
+    setHeader(Math.round(guestTotal).toLocaleString(), 'Total Guest Generated');
+
+    if(compareMode === 'LM'){
+      cards = [
+        ['Total Guest', Math.round(guestTotal).toLocaleString(), compareBadgeDetailed(lmGuest ? comparePct(guestTotal,lmGuest) : null, 'vs LM', lmGuest ? signedNumber(guestTotal-lmGuest)+' guests vs '+mom.lastMonth : 'No LM guest data')],
+        ['NMU / Closed', Math.round(closedTotal).toLocaleString(), compareBadgeDetailed(lmNmu ? comparePct(closedTotal,lmNmu) : null, 'vs LM', lmNmu ? signedNumber(closedTotal-lmNmu)+' NMU vs '+mom.lastMonth : 'No LM NMU data')],
+        ['Close Rate', pct(close), compareBadgeDetailed(lmClose ? comparePct(close,lmClose) : null, 'vs LM', lmClose ? signedPctPoint(close-lmClose)+' vs '+mom.lastMonth : 'No LM close rate')],
+        ['Guest Clubs', clubCount.toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">All clubs with guest data</span>'],
+        ['Top Source', topSource ? topSource.source : '-', '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+(topSource ? Math.round(topSource.guest).toLocaleString()+' guests' : 'No source')+'</span>']
+      ];
+    }else if(compareMode === 'TARGET'){
+      const targetGuest = targetSum('guestTarget');
+      const targetNmu = targetSum('nmuTarget');
+      const targetClose = targetGuest ? targetNmu / targetGuest : 0;
+      cards = [
+        ['Total Guest', Math.round(guestTotal).toLocaleString(), compareBadgeDetailed(targetGuest ? guestTotal/targetGuest - 1 : null, 'vs Target', targetGuest ? Math.round(targetGuest).toLocaleString()+' target · '+pct(guestTotal/targetGuest) : 'No guest target')],
+        ['NMU / Closed', Math.round(closedTotal).toLocaleString(), compareBadgeDetailed(targetNmu ? closedTotal/targetNmu - 1 : null, 'vs Target', targetNmu ? Math.round(targetNmu).toLocaleString()+' target · '+pct(closedTotal/targetNmu) : 'No NMU target')],
+        ['Close Rate', pct(close), compareBadgeDetailed(targetClose ? close/targetClose - 1 : null, 'vs Target', targetGuest ? pct(targetClose)+' target close rate' : 'No close-rate target')],
+        ['Guest Clubs', clubCount.toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">All clubs with guest data</span>'],
+        ['Top Source', topSource ? topSource.source : '-', '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+(topSource ? Math.round(topSource.guest).toLocaleString()+' guests' : 'No source')+'</span>']
+      ];
+    }else{
+      cards = [
+        ['Total Guest', Math.round(guestTotal).toLocaleString(), '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+periodText+'</span>'],
+        ['NMU / Closed', Math.round(closedTotal).toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Converted from guest funnel</span>'],
+        ['Close Rate', pct(close), '<span class="'+(close>=0.18?'badge-up':close>=0.1?'badge-neutral':'badge-down')+' px-2 py-1 rounded-full text-xs font-bold">'+Math.round(closedTotal).toLocaleString()+' / '+Math.round(guestTotal).toLocaleString()+'</span>'],
+        ['Guest Clubs', clubCount.toLocaleString(), '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">All clubs with guest data</span>'],
+        ['Top Source', topSource ? topSource.source : '-', '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">'+(topSource ? Math.round(topSource.guest).toLocaleString()+' guests' : 'No source')+'</span>']
+      ];
+    }
   }else{
-    const periodText = getPeriod() === 'ALL' ? 'All Periods' : (getViewMode() === 'DAILY' ? getPeriod() + ' · Day ' + String(getEffectiveCutoffDay(getPeriod())).padStart(2,'0') : getPeriod() + ' · MTD D' + getEffectiveCutoffDay(getPeriod()));
-    cards = [
-      ['Total Cash',money(total),'<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">Actual Revenue · '+periodText+'</span>'],
-      ['Membership Sales',money(membership),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+pct(total?membership/total:0)+' mix</span>'],
-      ['PT Sales',money(pt),'<span class="'+(total && pt/total>=0.42?'badge-up':'badge-neutral')+' px-2 py-1 rounded-full text-xs font-bold">'+pct(total?pt/total:0)+' mix</span>'],
-      ['PTSS Served',Math.round(ptss).toLocaleString(),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Non-cash KPI</span>'],
-      ['Guest Close Rate',pct(closeRate),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+Math.round(guest).toLocaleString()+' guests</span>']
-    ];
+    setHeader(money(total), 'Total NMS + PT Sales | USD');
+
+    if(compareMode === 'LM'){
+      const lm = getLastMonthMetrics();
+      const label = lm ? 'vs LM D'+lm.cutoff : 'vs LM';
+      cards = [
+        ['Total Cash', money(total), compareBadgeDetailed(lm ? comparePct(total,lm.cash) : null, label, lm ? signedMoney(total-lm.cash)+' vs '+lm.month : '')],
+        ['Membership Sales', money(membership), compareBadgeDetailed(lm ? comparePct(membership,lm.membership) : null, label, lm ? signedMoney(membership-lm.membership)+' vs '+lm.month : '')],
+        ['PT Sales', money(pt), compareBadgeDetailed(lm ? comparePct(pt,lm.ptSales) : null, label, lm ? signedMoney(pt-lm.ptSales)+' vs '+lm.month : '')],
+        ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(lm ? comparePct(ptss,lm.ptss) : null, label, lm ? signedNumber(ptss-lm.ptss)+' sessions' : '')],
+        ['Guest Close Rate', pct(closeRate), compareBadgeDetailed(lm ? comparePct(closeRate,lm.closeRate) : null, label, lm ? signedPctPoint(closeRate-lm.closeRate)+' vs '+lm.month : '')]
+      ];
+    }else if(compareMode === 'TARGET'){
+      const targetCash = targetSum('cashTarget');
+      const targetMembership = targetSum('membershipTarget');
+      const targetPt = targetSum('ptTarget');
+      const targetPtss = targetSum('ptssTarget');
+      const targetGuest = targetSum('guestTarget');
+      const targetNmu = targetSum('nmuTarget');
+      const targetCloseRate = targetGuest ? targetNmu / targetGuest : 0;
+
+      cards = [
+        ['Total Cash', money(total), compareBadgeDetailed(targetCash ? total/targetCash - 1 : null, 'vs Target', targetCash ? money(targetCash)+' target · '+pct(total/targetCash) : 'No target data')],
+        ['Membership Sales', money(membership), compareBadgeDetailed(targetMembership ? membership/targetMembership - 1 : null, 'vs Target', targetMembership ? money(targetMembership)+' target · '+pct(membership/targetMembership) : 'No target data')],
+        ['PT Sales', money(pt), compareBadgeDetailed(targetPt ? pt/targetPt - 1 : null, 'vs Target', targetPt ? money(targetPt)+' target · '+pct(pt/targetPt) : 'No target data')],
+        ['PTSS Served', Math.round(ptss).toLocaleString(), compareBadgeDetailed(targetPtss ? ptss/targetPtss - 1 : null, 'vs Target', targetPtss ? Math.round(targetPtss).toLocaleString()+' target · '+pct(ptss/targetPtss) : 'No target data')],
+        ['Guest Close Rate', pct(closeRate), compareBadgeDetailed(targetCloseRate ? closeRate/targetCloseRate - 1 : null, 'vs Target', targetGuest ? Math.round(targetNmu).toLocaleString()+'/'+Math.round(targetGuest).toLocaleString()+' target NMU/Guest' : 'No target data')]
+      ];
+    }else{
+      cards = [
+        ['Total Cash',money(total),'<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">Actual Revenue · '+periodText+'</span>'],
+        ['Membership Sales',money(membership),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+pct(total?membership/total:0)+' mix</span>'],
+        ['PT Sales',money(pt),'<span class="'+(total && pt/total>=0.42?'badge-up':'badge-neutral')+' px-2 py-1 rounded-full text-xs font-bold">'+pct(total?pt/total:0)+' mix</span>'],
+        ['PTSS Served',Math.round(ptss).toLocaleString(),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">Non-cash KPI</span>'],
+        ['Guest Close Rate',pct(closeRate),'<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">'+Math.round(guest).toLocaleString()+' guests</span>']
+      ];
+    }
   }
 
   byId('kpiCards').innerHTML = cards.map(c=>'<div class="card p-4"><div class="mini-label">'+c[0]+'</div><div class="metric mt-1">'+c[1]+'</div><div class="mt-2">'+c[2]+'</div></div>').join('');
@@ -2002,7 +2092,7 @@ function renderGuest(rows){
   const sourceData = aggregateGuestSourceData(rows);
   const topSources = sourceData.slice(0,8);
   const clubAgg = aggregateGuestClubData();
-  const clubData = clubAgg.clubs.slice(0,20);
+  const clubData = clubAgg.clubs;
   const clubSources = clubAgg.sources.slice(0,8);
   const momData = aggregateGuestSourceMomData();
   const momRows = momData.rows;
@@ -2373,6 +2463,34 @@ function runSelfTests(){
 window.renderDashboard = renderDashboard;
 window.renderClubTable = renderClubTable;
 
+
+function switchToTab(tabName){
+  activeTab = tabName;
+  document.querySelectorAll('.tab').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab === tabName);
+  });
+  document.querySelectorAll('.tabPanel').forEach(p=>p.classList.add('hidden'));
+  const panel = byId(tabName);
+  if(panel) panel.classList.remove('hidden');
+}
+
+function applyAccessControl(){
+  currentUserRole = sessionStorage.getItem('caliDashboardRole') || currentUserRole || 'full';
+
+  if(currentUserRole === 'guest_only'){
+    document.querySelectorAll('.tab').forEach(btn=>{
+      if(btn.dataset.tab !== 'guest'){
+        btn.style.display = 'none';
+      }else{
+        btn.style.display = '';
+      }
+    });
+    switchToTab('guest');
+  }else{
+    document.querySelectorAll('.tab').forEach(btn=>{ btn.style.display = ''; });
+  }
+}
+
 function setupLogin(){
   const overlay = byId('loginOverlay');
   const user = byId('loginUser');
@@ -2380,22 +2498,31 @@ function setupLogin(){
   const btn = byId('loginBtn');
   const err = byId('loginError');
 
-  const AUTH_USER = 'Commercialteam';
-  const AUTH_PASS = '0909289331';
+  const USERS = [
+    {username:'Commercialteam', password:'0909289331', role:'full'},
+    {username:'CA360', password:'0773500035', role:'guest_only'}
+  ];
 
   if(!overlay || !user || !pass || !btn) return;
 
   if(sessionStorage.getItem('caliDashboardAuth') === 'yes'){
+    currentUserRole = sessionStorage.getItem('caliDashboardRole') || 'full';
     overlay.style.display = 'none';
     return;
   }
 
   function attemptLogin(){
-    const ok = user.value.trim() === AUTH_USER && pass.value.trim() === AUTH_PASS;
-    if(ok){
+    const inputUser = user.value.trim().toLowerCase();
+    const inputPass = pass.value.trim();
+    const matched = USERS.find(u=>u.username.toLowerCase() === inputUser && u.password === inputPass);
+    if(matched){
+      currentUserRole = matched.role;
       sessionStorage.setItem('caliDashboardAuth','yes');
+      sessionStorage.setItem('caliDashboardRole', matched.role);
       overlay.style.display = 'none';
       err.style.display = 'none';
+      applyAccessControl();
+      if(typeof renderDashboard === 'function' && allData.length) renderDashboard();
     }else{
       err.style.display = 'block';
       pass.value = '';
@@ -2413,6 +2540,7 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   setupLogin();
   await loadData();
   setupFilters();
+  applyAccessControl();
   renderDashboard();
   runSelfTests();
 });
