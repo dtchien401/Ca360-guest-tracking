@@ -345,8 +345,8 @@ const CONFIG = {
   CSV_URL: './data.csv',
   CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/data.csv',
 
-  TARGET_JSON_URL: './target.json',
-  TARGET_JSON_URL_FALLBACK: 'https://dtchien401.github.io/Dashboard-test/target.json',
+  TARGET_CSV_URL: './target.csv',
+  TARGET_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Performance-Dashboard/main/target.csv',
 
   GUEST_CSV_URL: './guest.csv',
   GUEST_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/guest.csv',
@@ -1056,17 +1056,23 @@ function normalizeTargetPayload(payload){
 
 async function loadTargetData(){
   try{
-    const result = await fetchJsonFromUrls(
-      [CONFIG.TARGET_JSON_URL, CONFIG.TARGET_JSON_URL_FALLBACK],
-      'target.json'
+    const result = await fetchTextFromUrls(
+      [CONFIG.TARGET_CSV_URL, CONFIG.TARGET_CSV_URL_FALLBACK],
+      'target.csv'
     );
 
-    targetData = normalizeTargetPayload(result.payload);
+    const csvRows = parseCsvText(result.text);
+
+    if(!csvRows.length){
+      throw new Error('target.csv returned 0 rows');
+    }
+
+    targetData = normalizeTargetPayload(csvRows);
     console.log('Loaded target data:', targetData.length, 'club-month target rows from', result.url, targetData.slice(0,3));
   }catch(err){
-    console.error('Target JSON not loaded:', err);
+    console.error('Target CSV not loaded:', err);
     targetData = [];
-    if(byId('dataStatus')) byId('dataStatus').textContent = 'Target JSON failed: ' + err.message;
+    if(byId('dataStatus')) byId('dataStatus').textContent = 'Target CSV failed: ' + err.message;
   }
 }
 
