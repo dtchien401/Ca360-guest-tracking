@@ -411,12 +411,12 @@ function actualDayOfPeriod(month){
   const today = new Date();
   const currentMonth = getLocalMonthString(today);
 
-  // If selected period is current month, use today's actual day.
+  // Current month = use yesterday because today's data is incomplete
   if(month === currentMonth){
-    return today.getDate();
+    return Math.max(today.getDate() - 1, 1);
   }
 
-  // If selected period is a past month, use full month.
+  // Past month = full month
   return daysInMonth(month);
 }
 
