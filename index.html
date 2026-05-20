@@ -411,12 +411,12 @@ function actualDayOfPeriod(month){
   const today = new Date();
   const currentMonth = getLocalMonthString(today);
 
-  // Current month = use yesterday because today's data is incomplete
+  // If selected period is current month, use today's actual day.
   if(month === currentMonth){
-    return Math.max(today.getDate() - 1, 1);
+    return today.getDate();
   }
 
-  // Past month = full month
+  // If selected period is a past month, use full month.
   return daysInMonth(month);
 }
 
@@ -2647,7 +2647,8 @@ function setupLogin(){
 
   const USERS = [
     {username:'Commercialteam', password:'0909289331', role:'full'},
-    {username:'CA360', password:'0773500035', role:'guest_only'}
+    {username:'CA360', password:'0773500035', role:'guest_only'},
+    {username:'admin', password:'CaliLife', role:'full'}
   ];
 
   if(!overlay || !user || !pass || !btn) return;
