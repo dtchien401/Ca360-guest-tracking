@@ -141,7 +141,6 @@ logo.png
         <button class="tab" data-tab="ptss"><span class="ico">▣</span><span>PT Sessions</span></button>
         <button class="tab" data-tab="guest"><span class="ico">◇</span><span>Guest Sources</span></button>
         <button class="tab" data-tab="club"><span class="ico">▤</span><span>Club Ranking</span></button>
-        <button class="tab" data-tab="operations"><span class="ico">◉</span><span>Operations</span></button>
         <button class="tab" data-tab="ai"><span class="ico">✦</span><span>AI Insights</span></button>
       </nav>
       <div class="sidebar-footer">Commercial dashboard powered by CSV data, same-day comparison and target tracking.</div>
@@ -286,119 +285,6 @@ logo.png
         <div class="card p-5 lg:col-span-3"><div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4"><div><div class="mini-label">Club Detail</div><h2 class="text-xl font-black">Club Performance Table</h2></div><input id="searchClub" placeholder="Search club..." class="border border-gray-200 rounded-xl px-4 py-2" /></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-3">Club</th><th>Region</th><th>Membership</th><th>PT Sales</th><th>Cash Total</th><th>vs LM</th><th>PTSS</th><th>Guest</th><th>NMU</th><th>Close Rate</th><th>Status</th></tr></thead><tbody id="clubTable"></tbody></table></div></div>
       </section>
 
-
-      <section id="operations" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div class="card p-5 lg:col-span-3">
-          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-            <div>
-              <div class="mini-label">Club Operations</div>
-              <h2 class="text-2xl font-black">Operations Dashboard</h2>
-              <p class="text-sm text-gray-500 mt-1">Check-in traffic, towel usage, VIP / sub-card mix, member profile and class attendance by class / club / instructor.</p>
-            </div>
-            <span id="operationsDataNote" class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">checkin hour.csv + class.csv</span>
-          </div>
-        </div>
-
-        <div class="card p-5 lg:col-span-2">
-          <div class="mini-label">Traffic Trend</div>
-          <h2 class="text-xl font-black mb-4">Daily Check-ins</h2>
-          <canvas id="opsDailyCheckinChart" height="110"></canvas>
-        </div>
-        <div class="card p-5">
-          <div class="mini-label">Operating Hours</div>
-          <h2 class="text-xl font-black mb-1">Check-ins by Hour</h2>
-          <p class="text-xs text-gray-400 font-bold mb-4">Mon–Fri 06:00–23:00 · Sat–Sun 08:00–22:00</p>
-          <canvas id="opsHourlyChart" height="220"></canvas>
-        </div>
-
-        <div class="card p-5 lg:col-span-2">
-          <div class="mini-label">Club Traffic</div>
-          <h2 class="text-xl font-black mb-4">Check-ins by Club</h2>
-          <canvas id="opsClubCheckinChart" height="130"></canvas>
-        </div>
-        <div class="card p-5">
-          <div class="mini-label">Card Tier Mix</div>
-          <h2 class="text-xl font-black mb-4">Check-ins by Card Tier</h2>
-          <canvas id="opsCardTierChart" height="210"></canvas>
-        </div>
-
-        <div class="card p-5">
-          <div class="mini-label">Towel Control</div>
-          <h2 class="text-xl font-black mb-4">Towel Take Rate by Club</h2>
-          <canvas id="opsTowelRateChart" height="220"></canvas>
-        </div>
-        <div class="card p-5">
-          <div class="mini-label">VIP / Sub-card</div>
-          <h2 class="text-xl font-black mb-4">VIP vs Sub-card by Club</h2>
-          <canvas id="opsVipSubChart" height="220"></canvas>
-        </div>
-        <div class="card p-5">
-          <div class="mini-label">Member Profile</div>
-          <h2 class="text-xl font-black mb-4">Gender & Age Mix</h2>
-          <div class="grid grid-cols-1 gap-5">
-            <canvas id="opsGenderChart" height="160"></canvas>
-            <canvas id="opsAgeChart" height="120"></canvas>
-          </div>
-        </div>
-
-        <div class="card p-5 lg:col-span-3">
-          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
-            <div>
-              <div class="mini-label">Class Operations</div>
-              <h2 class="text-xl font-black">Class Attendance Count</h2>
-              <p class="text-xs text-gray-400 mt-1">Ranked horizontal bars are used because class names and instructor names can be long. View attendance by class name, by club, and by instructor.</p>
-            </div>
-            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Class Attendance</span>
-          </div>
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div>
-              <div class="text-sm font-bold text-gray-500 mb-2">By Class Name</div>
-              <canvas id="opsClassNameChart" height="190"></canvas>
-            </div>
-            <div>
-              <div class="text-sm font-bold text-gray-500 mb-2">By Club</div>
-              <canvas id="opsClassCountChart" height="190"></canvas>
-            </div>
-            <div>
-              <div class="text-sm font-bold text-gray-500 mb-2">By Instructor</div>
-              <canvas id="opsInstructorChart" height="190"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <div class="card p-5 lg:col-span-3">
-          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
-            <div>
-              <div class="mini-label">Member Feedback / Request</div>
-              <h2 class="text-xl font-black">Feedback & Request Count</h2>
-              <p class="text-xs text-gray-400 mt-1">Best view: ranked horizontal bar by club to identify pressure points, and issue-type bar to show root causes.</p>
-            </div>
-            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Member Voice</span>
-          </div>
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <div class="text-sm font-bold text-gray-500 mb-2">By Club</div>
-              <canvas id="opsFeedbackClubChart" height="210"></canvas>
-            </div>
-            <div>
-              <div class="text-sm font-bold text-gray-500 mb-2">By Issue</div>
-              <canvas id="opsFeedbackIssueChart" height="210"></canvas>
-            </div>
-          </div>
-        </div>
-
-        <div class="card p-5 lg:col-span-3">
-          <div class="mini-label">Operations Detail</div>
-          <h2 class="text-xl font-black mb-4">Club Operations Table</h2>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="text-left text-gray-500 border-b"><tr><th class="py-3">Club</th><th>Check-ins</th><th>Towel Taken</th><th>Towel Rate</th><th>VIP</th><th>Sub-card</th><th>VIP / Sub</th><th>Class Attendance</th><th>Peak Hour</th><th>Signal</th></tr></thead>
-              <tbody id="operationsTable"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
       <section id="ai" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="card p-5 lg:col-span-3">
           <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -466,16 +352,7 @@ const CONFIG = {
   GUEST_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/guest.csv',
 
   GUEST_JSON_URL: './Guest.json',
-  GUEST_JSON_URL_FALLBACK: 'https://dtchien401.github.io/Dashboard-test/Guest.json',
-
-  OPERATIONS_CSV_URL: './operations.csv',
-  OPERATIONS_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/operations.csv',
-
-  CHECKIN_HOUR_CSV_URL: './checkin hour.csv',
-  CHECKIN_HOUR_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/checkin%20hour.csv',
-
-  CLASS_CSV_URL: './class.csv',
-  CLASS_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/class.csv'
+  GUEST_JSON_URL_FALLBACK: 'https://dtchien401.github.io/Dashboard-test/Guest.json'
 };
 const charts = {};
 let activeTab = 'cash';
@@ -484,8 +361,6 @@ let allData = [];
 let data = [];
 let targetData = [];
 let guestData = [];
-let operationsData = [];
-let operationsSourceNote = 'operations.csv';
 const CLOSED_CLUBS = ['VMC','LTC','TDY','JCQ','JVJ','CVC','SCC','PPC','TC1','FIN SERVE','CA360'];
 
 const fallbackRawData = [
@@ -1632,437 +1507,6 @@ function aggregateGuestClubData(){
   return {clubs, sources};
 }
 
-
-function normalizeDateValue(value, monthValue, dayValue){
-  const s = String(value || '').trim();
-  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
-  if(/^\d+(.\d+)?$/.test(s) && Number(s) > 20000){
-    const d = excelSerialToDate(Number(s));
-    if(d && !isNaN(d.getTime())) return d.toISOString().slice(0,10);
-  }
-  const d = new Date(s);
-  if(s && !isNaN(d.getTime())) return d.toISOString().slice(0,10);
-  const month = parseTargetMonth(monthValue || '');
-  const day = Number(dayValue || 0);
-  if(month && day >= 1 && day <= 31) return month + '-' + String(day).padStart(2,'0');
-  return '';
-}
-function normalizeHourValue(v){
-  const s = String(v || '').trim();
-  const m = s.match(/(\d{1,2})/);
-  if(!m) return 'Unknown';
-  const h = Math.max(0, Math.min(23, Number(m[1])));
-  return String(h).padStart(2,'0') + ':00';
-}
-
-function hourNumber(hourLabel){
-  const m = String(hourLabel || '').match(/(\d{1,2})/);
-  return m ? Math.max(0, Math.min(23, Number(m[1]))) : null;
-}
-function opsDateObject(dateStr){
-  const s = String(dateStr || '').trim();
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
-  const d = new Date(s + 'T12:00:00');
-  return isNaN(d.getTime()) ? null : d;
-}
-function opsDayType(dateStr){
-  const d = opsDateObject(dateStr);
-  if(!d) return 'Weekday';
-  const day = d.getDay();
-  return (day === 0 || day === 6) ? 'Weekend' : 'Weekday';
-}
-function operatingHourRange(dateStr){
-  return opsDayType(dateStr) === 'Weekend' ? {start:8,end:22} : {start:6,end:23};
-}
-function isWithinOperatingHours(row){
-  const h = hourNumber(row && row.hour);
-  if(h === null) return false;
-  const range = operatingHourRange(row && row.date);
-  return h >= range.start && h <= range.end;
-}
-function operatingHourLabels(rows){
-  const hasWeekend = (rows || []).some(r=>opsDayType(r.date) === 'Weekend');
-  const hasWeekday = (rows || []).some(r=>opsDayType(r.date) === 'Weekday');
-  let start = hasWeekday ? 6 : 8;
-  let end = hasWeekday ? 23 : 22;
-  if(hasWeekend && hasWeekday){ start = 6; end = 23; }
-  return Array.from({length:end-start+1},(_,i)=>String(start+i).padStart(2,'0') + ':00');
-}
-function opsHourlySeries(rows){
-  const labels = operatingHourLabels(rows);
-  const weekday = {}, weekend = {};
-  labels.forEach(h=>{ weekday[h] = 0; weekend[h] = 0; });
-  (rows || []).filter(isWithinOperatingHours).forEach(r=>{
-    const h = normalizeHourValue(r.hour);
-    const type = opsDayType(r.date);
-    if(!(h in weekday)) return;
-    if(type === 'Weekend') weekend[h] += safeNumber(r.checkins);
-    else weekday[h] += safeNumber(r.checkins);
-  });
-  return {
-    labels,
-    weekday: labels.map(h=>weekday[h] || 0),
-    weekend: labels.map(h=>weekend[h] || 0)
-  };
-}
-function opsHourWeight(hour, dayType){
-  const h = Number(hour);
-  if(dayType === 'Weekend'){
-    if(h < 8 || h > 22) return 0;
-    if(h >= 9 && h <= 12) return 1.35;
-    if(h >= 13 && h <= 18) return 0.92;
-    if(h >= 19 && h <= 21) return 0.62;
-    return 0.32;
-  }
-  if(h < 6 || h > 23) return 0;
-  if(h >= 6 && h <= 9) return 1.12;
-  if(h >= 10 && h <= 16) return 0.50;
-  if(h >= 17 && h <= 21) return 1.45;
-  return 0.38;
-}
-function normalizeAgeGroup(age, ageGroup){
-  const g = String(ageGroup || '').trim();
-  if(g) return g;
-  const n = Number(age || 0);
-  if(!n) return 'Unknown';
-  if(n < 18) return '<18';
-  if(n <= 24) return '18-24';
-  if(n <= 34) return '25-34';
-  if(n <= 44) return '35-44';
-  if(n <= 54) return '45-54';
-  return '55+';
-}
-function getAny(row, keys){
-  for(const k of keys){ if(row[k] !== undefined && row[k] !== null && String(row[k]).trim() !== '') return row[k]; }
-  return '';
-}
-function monthNameToNumber(value){
-  const s = String(value || '').trim().toLowerCase().slice(0,3);
-  const map = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-  return map[s] || 0;
-}
-function buildDateFromParts(yearValue, monthValue, dayValue){
-  const year = Number(yearValue || 0);
-  let month = Number(monthValue || 0);
-  if(!month) month = monthNameToNumber(monthValue);
-  const day = Number(dayValue || 0);
-  if(year && month >= 1 && month <= 12 && day >= 1 && day <= 31){
-    return String(year) + '-' + String(month).padStart(2,'0') + '-' + String(day).padStart(2,'0');
-  }
-  return '';
-}
-function regionForClub(club){
-  const c = String(club || '').trim().toUpperCase();
-  const found = (allData || []).find(r=>String(r.club || '').trim().toUpperCase() === c && r.region);
-  return found ? found.region : 'Unassigned';
-}
-function normalizeCheckinHourRows(rawRows){
-  return (rawRows || []).map(r=>{
-    const club = String(getAny(r,['Club_Check_In','Club','club','club_code','Location','location'])).trim().toUpperCase();
-    const date = buildDateFromParts(getAny(r,['Year','year']), getAny(r,['Month','month']), getAny(r,['Day_Checked_In','Day','day'])) ||
-      normalizeDateValue(getAny(r,['Date','date','Checkin Date','Check-in Date','Check In Date']), getAny(r,['Month','month']), getAny(r,['Day_Checked_In','Day','day']));
-    const checkins = safeNumber(getAny(r,['Number_Checked_In','Checkins','Check-ins','Check In','Check-in','Checkin','Total Checkins','Value','value']));
-    const towelTaken = safeNumber(getAny(r,['With_Towel','Towel Taken','Towel','Towels','Towel Count']));
-    const withSwim = safeNumber(getAny(r,['With_Swim']));
-    return {
-      sourceType:'checkin',
-      date,
-      month: date ? date.slice(0,7) : '',
-      day: date ? Number(date.slice(8,10)) : Number(getAny(r,['Day_Checked_In','Day','day'])) || 0,
-      club,
-      region: regionForClub(club),
-      hour: normalizeHourValue(getAny(r,['Hour_Checked_In','Hour','hour','Checkin Hour','Check-in Hour','Time','time'])),
-      cardTier: withSwim > 0 ? 'Swim Usage' : 'General',
-      gender:'Unknown',
-      ageGroup:'Unknown',
-      className:'',
-      instructor:'',
-      checkins,
-      towelTaken,
-      towelEligible: checkins,
-      vip:0,
-      subCard:0,
-      classCount:0,
-      issueType:'',
-      feedbackCount:0
-    };
-  }).filter(r=>r.month && r.club && safeNumber(r.checkins) > 0);
-}
-function normalizeClassRows(rawRows){
-  return (rawRows || []).map(r=>{
-    const club = String(getAny(r,['club_code','Club','club','Location','location'])).trim().toUpperCase();
-    const date = buildDateFromParts(getAny(r,['Year_class','Year','year']), getAny(r,['Month_class','Month','month']), getAny(r,['Day_class','Day','day'])) ||
-      normalizeDateValue(getAny(r,['class_start_date','Date','date']), getAny(r,['Month_class','Month','month']), getAny(r,['Day_class','Day','day']));
-    const classCount = safeNumber(getAny(r,['number_usage','Class Attendance','Attendance','Attendees','Participants','Class Count','ClassCount','classCount']));
-    const className = String(getAny(r,['Class','Class Name','ClassName','className','Program','program']) || 'Unknown Class').trim() || 'Unknown Class';
-    const instructor = String(getAny(r,['trainer_name','Instructor','instructor','Teacher','teacher','Coach','coach']) || 'Unknown Instructor').trim() || 'Unknown Instructor';
-    return {
-      sourceType:'class',
-      date,
-      month: date ? date.slice(0,7) : '',
-      day: date ? Number(date.slice(8,10)) : Number(getAny(r,['Day_class','Day','day'])) || 0,
-      club,
-      region: regionForClub(club),
-      hour: normalizeHourValue(getAny(r,['class_hour','Hour','hour','Time','time'])),
-      cardTier:'Class Attendance',
-      gender:'Unknown',
-      ageGroup:'Unknown',
-      className,
-      instructor,
-      checkins:0,
-      towelTaken:0,
-      towelEligible:0,
-      vip:0,
-      subCard:0,
-      classCount,
-      issueType:'',
-      feedbackCount:0,
-      seats:safeNumber(getAny(r,['number_seat','Seats','Capacity'])),
-      utilization:safeNumber(getAny(r,['utilisation_rate','utilization_rate','Utilisation','Utilization']))
-    };
-  }).filter(r=>r.month && r.club && safeNumber(r.classCount) > 0);
-}
-function normalizeOperationsPayload(rawRows){
-  return (rawRows || []).map(r=>{
-    const date = normalizeDateValue(getAny(r,['Date','date','Checkin Date','Check-in Date','Check In Date']), getAny(r,['Month','month']), getAny(r,['Day','day']));
-    const month = date ? date.slice(0,7) : normalizeRawMonth(getAny(r,['Month','month']), getAny(r,['MMM','mmm']), getAny(r,['YYYY','yyyy']));
-    const day = Number(getAny(r,['Day','day'])) || (date ? Number(date.slice(8,10)) : 0);
-    const club = String(getAny(r,['Club','club','Location','location'])).trim().toUpperCase();
-    const region = String(getAny(r,['Region','region']) || regionForClub(club)).trim() || 'Unassigned';
-    const checkins = safeNumber(getAny(r,['Checkins','Check-ins','Check In','Check-in','Checkin','Total Checkins','Value','value']));
-    const towelTaken = safeNumber(getAny(r,['Towel Taken','Towel','Towels','Khăn','Lay Khan','Lay khan','Towel Count']));
-    const towelEligibleRaw = getAny(r,['Towel Eligible','Eligible Towel','Towel Entitled','Eligible']);
-    const towelEligible = towelEligibleRaw === '' ? checkins : safeNumber(towelEligibleRaw);
-    const vip = safeNumber(getAny(r,['VIP','VIP Card','VIP Cards','Vip']));
-    const sub = safeNumber(getAny(r,['Sub Card','Sub-card','Subcard','Dependent Card','Thẻ phụ','The phu']));
-    const memberType = String(getAny(r,['Member Type','memberType','Card Type','cardType'])).trim();
-    const tier = String(getAny(r,['Card Tier','CardTier','Tier','Membership Tier','Hạng thẻ','Hang the']) || 'Unknown').trim() || 'Unknown';
-    return {
-      sourceType:'operations', date, month, day, club, region,
-      hour: normalizeHourValue(getAny(r,['Hour','hour','Checkin Hour','Check-in Hour','Time','time'])),
-      cardTier: tier,
-      gender: String(getAny(r,['Gender','gender','Sex','sex']) || 'Unknown').trim() || 'Unknown',
-      ageGroup: normalizeAgeGroup(getAny(r,['Age','age']), getAny(r,['Age Group','AgeGroup','ageGroup'])),
-      className: String(getAny(r,['Class Name','ClassName','className','Class','class','Program','program']) || 'Unknown Class').trim() || 'Unknown Class',
-      instructor: String(getAny(r,['Instructor','instructor','Teacher','teacher','Coach','coach']) || 'Unknown Instructor').trim() || 'Unknown Instructor',
-      checkins,
-      towelTaken,
-      towelEligible,
-      vip: vip || (/vip/i.test(memberType) ? checkins : 0),
-      subCard: sub || (/(sub|dependent|phụ|phu)/i.test(memberType) ? checkins : 0),
-      classCount: safeNumber(getAny(r,['Class Attendance','Attendance','Attendees','Participants','Class Count','Classes','ClassCount','classCount'])),
-      issueType: String(getAny(r,['Issue','Issue Type','IssueType','Feedback Issue','Request Type','Problem','Category Feedback','Feedback Category']) || 'General Request').trim() || 'General Request',
-      feedbackCount: safeNumber(getAny(r,['Feedback Count','Request Count','Feedback','Requests','Member Feedback','Member Request','Issue Count']))
-    };
-  }).filter(r=>r.month && r.club && (safeNumber(r.checkins) > 0 || safeNumber(r.classCount) > 0 || safeNumber(r.feedbackCount) > 0));
-}
-function makeFallbackOperationsData(){
-  const out = [];
-  const sourceRaw = allData && allData.length ? allData : mapFallbackData();
-  let revenueClubSet = activeRevenueClubSet();
-
-  // Safety fallback: if activeRevenueClubSet is empty because filters are not ready yet,
-  // use every valid revenue club in sourceRaw. This guarantees demo Operations data appears.
-  if(!revenueClubSet.size){
-    revenueClubSet = new Set(
-      sourceRaw
-        .filter(r=>isValidRevenueClub(r.club) && cashTotal(r) > 0)
-        .map(r=>String(r.club || '').trim().toUpperCase())
-    );
-  }
-
-  const source = sourceRaw.filter(r=>revenueClubSet.has(String(r.club || '').trim().toUpperCase()));
-  source.forEach((r,idx)=>{
-    const dim = daysInMonth(r.month);
-    for(let d=1; d<=Math.min(dim,31); d++){
-      const base = safeNumber((r.dailyGuest || [])[d-1]) + safeNumber((r.dailyPtss || [])[d-1]) * 0.42 + 30 + ((idx+d)%9)*3;
-      const dateStr = r.month+'-'+String(d).padStart(2,'0');
-      const dayType = opsDayType(dateStr);
-      const range = operatingHourRange(dateStr);
-      let weights = [];
-      for(let h=range.start; h<=range.end; h++) weights.push({hour:h, weight:opsHourWeight(h, dayType)});
-      const totalWeight = weights.reduce((a,b)=>a+b.weight,0) || 1;
-      weights.forEach((item,j)=>{
-        const hourLabel = String(item.hour).padStart(2,'0') + ':00';
-        const checkins = Math.max(1, Math.round(base * 3.2 * item.weight / totalWeight));
-        out.push({
-          date:dateStr, month:r.month, day:d, club:r.club, region:r.region, hour:hourLabel,
-          cardTier:['Platinum','Gold','Silver','VIP'][((idx+d+j)%4)], gender:['Male','Female','Unknown'][((idx+d+j)%3)], ageGroup:['18-24','25-34','35-44','45-54','55+'][((idx+d+j)%5)],
-          className:['Yoga Flow','BodyPump','Cycling','Zumba','Pilates Mat','Les Mills Core','Dance Fit','Stretch Recovery'][((idx+d+j)%8)],
-          instructor:['Linh Nguyen','Minh Tran','Hana Le','Quang Pham','Vy Hoang','An Vo','Jenny Nguyen'][((idx+d+j)%7)],
-          checkins, towelTaken:Math.round(checkins*(0.42+((idx+j)%4)*0.08)), towelEligible:checkins,
-          vip:Math.round(checkins*(0.10+((idx+j)%3)*0.03)), subCard:Math.round(checkins*(0.06+((idx+d)%4)*0.025)), classCount:(item.hour === 9 || item.hour === 18 || item.hour === 19) ? Math.max(8,Math.round(checkins*(0.35+((idx+j)%4)*0.06))) : 0,
-          issueType:['Cleanliness','Locker / Facility','Staff Service','Equipment','Class Booking','Billing / Contract','Access / Check-in','Towel Request'][((idx+d+j)%8)],
-          feedbackCount:(((idx+d+j)%11) === 0 || ((idx+j)%17) === 0) ? (1 + ((idx+d+j)%3)) : 0
-        });
-      });
-    }
-  });
-  return out;
-}
-async function loadOperationsData(){
-  const loaded = [];
-  const sourceLabels = [];
-  const errors = [];
-
-  try{
-    const checkinResult = await fetchTextFromUrls([CONFIG.CHECKIN_HOUR_CSV_URL, CONFIG.CHECKIN_HOUR_CSV_URL_FALLBACK], 'checkin hour.csv');
-    const checkinRows = normalizeCheckinHourRows(parseCsvText(checkinResult.text));
-    loaded.push(...checkinRows);
-    sourceLabels.push('checkin hour.csv: ' + checkinRows.length.toLocaleString() + ' rows');
-    console.log('Loaded checkin hour.csv:', checkinRows.length, 'rows from', checkinResult.url);
-  }catch(err){
-    errors.push(err.message || String(err));
-    console.warn('checkin hour.csv not loaded:', err);
-  }
-
-  try{
-    const classResult = await fetchTextFromUrls([CONFIG.CLASS_CSV_URL, CONFIG.CLASS_CSV_URL_FALLBACK], 'class.csv');
-    const classRows = normalizeClassRows(parseCsvText(classResult.text));
-    loaded.push(...classRows);
-    sourceLabels.push('class.csv: ' + classRows.length.toLocaleString() + ' rows');
-    console.log('Loaded class.csv:', classRows.length, 'rows from', classResult.url);
-  }catch(err){
-    errors.push(err.message || String(err));
-    console.warn('class.csv not loaded:', err);
-  }
-
-  // Backward compatibility: if the two new source files are not available, try old operations.csv.
-  if(!loaded.length){
-    try{
-      const result = await fetchTextFromUrls([CONFIG.OPERATIONS_CSV_URL, CONFIG.OPERATIONS_CSV_URL_FALLBACK], 'operations.csv');
-      const csvRows = normalizeOperationsPayload(parseCsvText(result.text));
-      loaded.push(...csvRows);
-      sourceLabels.push('operations.csv: ' + csvRows.length.toLocaleString() + ' rows');
-      console.log('Loaded operations.csv:', csvRows.length, 'rows from', result.url);
-    }catch(err){
-      errors.push(err.message || String(err));
-      console.warn('operations.csv not loaded:', err);
-    }
-  }
-
-  if(loaded.length){
-    operationsData = loaded;
-    operationsSourceNote = sourceLabels.join(' · ');
-  }else{
-    console.warn('Operations CSV files not loaded. Using fallback operations model.', errors.join(' ; '));
-    operationsData = makeFallbackOperationsData();
-    operationsSourceNote = 'Demo fallback operations data';
-  }
-}
-function operationRowsForCurrentFilter(){
-  const period = getPeriod();
-  const region = byId('regionFilter') ? byId('regionFilter').value : 'ALL';
-  const club = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
-  const day = getEffectiveCutoffDay(period);
-  const revenueClubSet = activeRevenueClubSet();
-  return (operationsData || []).filter(r=>{
-    const rClub = String(r.club || '').trim().toUpperCase();
-    const inRevenueClubList = revenueClubSet.has(rClub);
-    const inPeriod = period === 'ALL' || r.month === period;
-    const inDay = period === 'ALL' ? true : (getViewMode() === 'DAILY' ? r.day === day : r.day <= day);
-    return inRevenueClubList && inPeriod && inDay && isWithinOperatingHours(r) && (region === 'ALL' || r.region === region) && (club === 'ALL' || rClub === String(club).trim().toUpperCase());
-  });
-}
-function groupSum(rows, key, valueKey){
-  const map = {};
-  rows.forEach(r=>{ const k = String(r[key] || 'Unknown'); map[k] = (map[k] || 0) + safeNumber(r[valueKey]); });
-  return Object.entries(map).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
-}
-function clubOpsAgg(rows){
-  const map = {};
-  rows.forEach(r=>{
-    const k = r.club || 'Unknown';
-    if(!map[k]) map[k] = {club:k, checkins:0, towelTaken:0, towelEligible:0, vip:0, subCard:0, classCount:0, hours:{}};
-    const x = map[k];
-    x.checkins += safeNumber(r.checkins); x.towelTaken += safeNumber(r.towelTaken); x.towelEligible += safeNumber(r.towelEligible);
-    x.vip += safeNumber(r.vip); x.subCard += safeNumber(r.subCard); x.classCount += safeNumber(r.classCount);
-    x.hours[r.hour] = (x.hours[r.hour] || 0) + safeNumber(r.checkins);
-  });
-  return Object.values(map).map(x=>{
-    const peak = Object.entries(x.hours).sort((a,b)=>b[1]-a[1])[0];
-    x.towelRate = x.towelEligible ? x.towelTaken / x.towelEligible : 0;
-    x.vipSubRatio = x.subCard ? x.vip / x.subCard : (x.vip ? x.vip : 0);
-    x.peakHour = peak ? peak[0] : '-';
-    return x;
-  }).sort((a,b)=>b.checkins-a.checkins);
-}
-function renderOperations(){
-  let rows = operationRowsForCurrentFilter();
-
-  // Keep real CSV data visible. Do not replace loaded CSV with demo data when filters return 0 rows.
-  const totalCheckins = sum(rows,'checkins');
-  const towelTaken = sum(rows,'towelTaken');
-  const towelEligible = sum(rows,'towelEligible') || totalCheckins;
-  const vip = sum(rows,'vip'), sub = sum(rows,'subCard'), classes = sum(rows,'classCount');
-  const feedbackTotal = sum(rows,'feedbackCount');
-  const peakHour = groupSum(rows,'hour','checkins')[0];
-  const topIssue = groupSum(rows.filter(x=>safeNumber(x.feedbackCount)>0),'issueType','feedbackCount')[0];
-  const cards = [
-    {label:'Total Check-ins', value:Math.round(totalCheckins).toLocaleString(), note:'Member visits in selected view'},
-    {label:'Towel Take Rate', value:pct(towelEligible ? towelTaken / towelEligible : 0), note:Math.round(towelTaken).toLocaleString()+' towels taken'},
-    {label:'VIP / Sub-card', value:(sub ? (vip/sub).toFixed(2)+'x' : vip.toLocaleString()), note:Math.round(vip).toLocaleString()+' VIP · '+Math.round(sub).toLocaleString()+' sub-card'},
-    {label:'Class Attendance', value:Math.round(classes).toLocaleString(), note:'Total class attendees'},
-    {label:'Feedback / Request', value:Math.round(feedbackTotal).toLocaleString(), note:topIssue ? 'Top issue: '+topIssue.name : 'No member issue'}
-  ];
-  byId('kpiCards').innerHTML = cards.map(c=>'<div class="card p-4"><div class="mini-label">'+c.label+'</div><div class="metric mt-2">'+c.value+'</div><div class="text-xs text-gray-500 font-bold mt-2">'+c.note+'</div></div>').join('');
-  byId('headerTotal').textContent = Math.round(totalCheckins).toLocaleString();
-  byId('headerDesc').textContent = 'Total Check-ins | Operations';
-
-  const byDay = groupSum(rows,'date','checkins').sort((a,b)=>a.name.localeCompare(b.name));
-  drawChart('opsDailyCheckinChart',{type:'line',data:{labels:byDay.map(x=>x.name.slice(5)),datasets:[{label:'Check-ins',data:byDay.map(x=>x.value),borderWidth:3,tension:.35,fill:false}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-  const hourly = opsHourlySeries(rows);
-  drawChart('opsHourlyChart',{
-    type:'bar',
-    data:{
-      labels:hourly.labels,
-      datasets:[
-        {label:'Weekday',data:hourly.weekday,borderRadius:10},
-        {label:'Weekend',data:hourly.weekend,borderRadius:10}
-      ]
-    },
-    options:{
-      responsive:true,
-      plugins:{legend:{position:'bottom'},tooltip:{callbacks:{afterBody:(items)=>{
-        const hour = items && items[0] ? items[0].label : '';
-        return hour === '06:00' || hour === '07:00' || hour === '23:00' ? 'Weekend clubs closed at this hour' : '';
-      }}}},
-      scales:{x:{stacked:false},y:{beginAtZero:true}}
-    }
-  });
-  const clubs = clubOpsAgg(rows).slice(0,15);
-  drawChart('opsClubCheckinChart',{type:'bar',data:{labels:clubs.map(x=>x.club),datasets:[{label:'Check-ins',data:clubs.map(x=>x.checkins),borderRadius:10}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-  const tiers = groupSum(rows,'cardTier','checkins').slice(0,8);
-  drawChart('opsCardTierChart',{type:'doughnut',data:{labels:tiers.map(x=>x.name),datasets:[{data:tiers.map(x=>x.value)}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
-  const towelClubs = clubOpsAgg(rows).filter(x=>x.towelEligible>0).sort((a,b)=>b.towelRate-a.towelRate).slice(0,12);
-  drawChart('opsTowelRateChart',{type:'bar',data:{labels:towelClubs.map(x=>x.club),datasets:[{label:'Towel Rate %',data:towelClubs.map(x=>+(x.towelRate*100).toFixed(1)),borderRadius:10}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'}}}}});
-  const vipClubs = clubOpsAgg(rows).slice(0,12);
-  drawChart('opsVipSubChart',{type:'bar',data:{labels:vipClubs.map(x=>x.club),datasets:[{label:'VIP',data:vipClubs.map(x=>x.vip),borderRadius:10},{label:'Sub-card',data:vipClubs.map(x=>x.subCard),borderRadius:10}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
-  const gender = groupSum(rows,'gender','checkins');
-  drawChart('opsGenderChart',{type:'doughnut',data:{labels:gender.map(x=>x.name),datasets:[{data:gender.map(x=>x.value)}]},options:{responsive:true,plugins:{legend:{position:'bottom'}}}});
-  const ageOrder = ['<18','18-24','25-34','35-44','45-54','55+','Unknown'];
-  const ageMap = Object.fromEntries(groupSum(rows,'ageGroup','checkins').map(x=>[x.name,x.value]));
-  drawChart('opsAgeChart',{type:'bar',data:{labels:ageOrder.filter(a=>ageMap[a]),datasets:[{label:'Check-ins',data:ageOrder.filter(a=>ageMap[a]).map(a=>ageMap[a]),borderRadius:10}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-  const classNames = groupSum(rows.filter(x=>safeNumber(x.classCount)>0),'className','classCount').slice(0,10).reverse();
-  drawChart('opsClassNameChart',{type:'bar',data:{labels:classNames.map(x=>x.name),datasets:[{label:'Attendance',data:classNames.map(x=>x.value),borderRadius:10}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-  const classClubs = clubOpsAgg(rows).sort((a,b)=>b.classCount-a.classCount).slice(0,10).reverse();
-  drawChart('opsClassCountChart',{type:'bar',data:{labels:classClubs.map(x=>x.club),datasets:[{label:'Attendance',data:classClubs.map(x=>x.classCount),borderRadius:10}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-  const instructors = groupSum(rows.filter(x=>safeNumber(x.classCount)>0),'instructor','classCount').slice(0,10).reverse();
-  drawChart('opsInstructorChart',{type:'bar',data:{labels:instructors.map(x=>x.name),datasets:[{label:'Attendance',data:instructors.map(x=>x.value),borderRadius:10}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-  const feedbackRows = rows.filter(x=>safeNumber(x.feedbackCount)>0);
-  const feedbackByClub = groupSum(feedbackRows,'club','feedbackCount').slice(0,12).reverse();
-  drawChart('opsFeedbackClubChart',{type:'bar',data:{labels:feedbackByClub.map(x=>x.name),datasets:[{label:'Feedback / Requests',data:feedbackByClub.map(x=>x.value),borderRadius:10}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-  const feedbackByIssue = groupSum(feedbackRows,'issueType','feedbackCount').slice(0,10).reverse();
-  drawChart('opsFeedbackIssueChart',{type:'bar',data:{labels:feedbackByIssue.map(x=>x.name),datasets:[{label:'Feedback / Requests',data:feedbackByIssue.map(x=>x.value),borderRadius:10}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
-  byId('operationsTable').innerHTML = clubOpsAgg(rows).map(x=>{
-    const signal = x.towelRate > .75 ? '<span class="badge-down px-2 py-1 rounded-full text-xs font-bold">High towel usage</span>' : x.checkins > 0 ? '<span class="badge-up px-2 py-1 rounded-full text-xs font-bold">Normal</span>' : '<span class="badge-neutral px-2 py-1 rounded-full text-xs font-bold">No traffic</span>';
-    return '<tr class="border-b table-row"><td class="py-3 font-black">'+x.club+'</td><td>'+Math.round(x.checkins).toLocaleString()+'</td><td>'+Math.round(x.towelTaken).toLocaleString()+'</td><td>'+pct(x.towelRate)+'</td><td>'+Math.round(x.vip).toLocaleString()+'</td><td>'+Math.round(x.subCard).toLocaleString()+'</td><td>'+(x.subCard ? x.vipSubRatio.toFixed(2)+'x' : '-')+'</td><td>'+Math.round(x.classCount).toLocaleString()+'</td><td>'+x.peakHour+'</td><td>'+signal+'</td></tr>';
-  }).join('') || '<tr><td class="py-4 text-gray-400" colspan="10">No operations data for selected filters.</td></tr>';
-  const note = byId('operationsDataNote');
-  if(note) note.textContent = operationsSourceNote + ' · Filtered: ' + rows.length.toLocaleString() + ' rows';
-  if(byId('dataStatus')) byId('dataStatus').textContent = 'Operations loaded: ' + operationsData.length.toLocaleString() + ' rows | filtered to active revenue clubs / selected period: ' + rows.length.toLocaleString();
-}
-
 async function loadData(){
   setStatus('Loading CSV data...');
   await loadTargetData();
@@ -2095,8 +1539,6 @@ async function loadData(){
     allData = mapFallbackData();
     setStatus('data.csv failed. Please upload data.csv to the same GitHub folder as index.html, then open the GitHub Pages URL. Details: ' + err.message);
   }
-
-  await loadOperationsData();
 }
 
 function getPeriod(){ return byId('periodFilter').value; }
@@ -2200,36 +1642,12 @@ function refreshDayFilter(){
   dayFilter.value = (Number(old) >= 1 && Number(old) <= totalDays) ? old : String(recommended);
 }
 
-function isValidRevenueClub(club){
-  const c = String(club || '').trim().toUpperCase();
-  return c && !CLOSED_CLUBS.includes(c) && !['FIN SERVICE'].includes(c);
-}
-function activeRevenueClubSet(){
-  // Single source of truth for club visibility. Operations must only show clubs that exist
-  // in the same revenue period view and are not closed/non-operational clubs.
-  const period = byId('periodFilter') && byId('periodFilter').value ? byId('periodFilter').value : 'ALL';
-  let sourceRows = Array.isArray(data) && data.length ? data : [];
-
-  // During initial load, Operations fallback data may be generated before the filters
-  // have created the aggregated `data` array. In that case, derive active clubs from
-  // allData directly so demo Operations rows are never empty.
-  if(!sourceRows.length && Array.isArray(allData) && allData.length){
-    sourceRows = (period === 'ALL' ? allData : allData.filter(r=>r.month === period));
-  }
-
-  const set = new Set();
-  sourceRows.forEach(r=>{
-    const club = String(r.club || '').trim().toUpperCase();
-    if(isValidRevenueClub(club) && cashTotal(r) > 0) set.add(club);
-  });
-  return set;
-}
 function refreshPeriodData(){
   data = aggregateByClubForView(getPeriodRows());
-  const revenueClubSet = activeRevenueClubSet();
-  const visibleRows = data.filter(d=>revenueClubSet.has(String(d.club || '').trim().toUpperCase()));
-  const regions = Array.from(new Set(visibleRows.map(d=>d.region))).sort();
-  const clubs = Array.from(revenueClubSet).sort();
+  const regions = Array.from(new Set(data.map(d=>d.region))).sort();
+  const clubs = Array.from(new Set(data.map(d=>d.club)))
+    .filter(c => !['CA360','FIN SERVE','FIN SERVICE'].includes(String(c).trim().toUpperCase()))
+    .sort();
   const oldRegion = byId('regionFilter').value || 'ALL';
   const oldClub = byId('clubFilter').value || 'ALL';
   byId('regionFilter').innerHTML = '<option value="ALL">All Regions</option>' + regions.map(r=>'<option value="'+r+'">'+r+'</option>').join('');
@@ -3169,7 +2587,6 @@ function renderDashboard(){
   if(activeTab === 'ptss') renderPtss(rows);
   if(activeTab === 'guest') renderGuest(rows);
   if(activeTab === 'club') renderRanking(rows);
-  if(activeTab === 'operations') renderOperations();
   if(activeTab === 'ai') renderAiInsights(rows);
 
   if(byId('compareFilter') && byId('compareFilter').value === 'TARGET' && byId('dataStatus')){
@@ -3230,7 +2647,8 @@ function setupLogin(){
 
   const USERS = [
     {username:'Commercialteam', password:'0909289331', role:'full'},
-    {username:'CA360', password:'0773500035', role:'guest_only'}
+    {username:'CA360', password:'0773500035', role:'guest_only'},
+    {username:'admin', password:'CaliLife', role:'full'}
   ];
 
   if(!overlay || !user || !pass || !btn) return;
