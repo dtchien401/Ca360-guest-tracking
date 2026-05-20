@@ -57,6 +57,9 @@
     .badge-down{background:#FFF1F2;color:#BE123C}
     .badge-neutral{background:#F1F5F9;color:#334155}
     .table-row:hover{background:#FFF7F7}
+    .sortable-th{cursor:pointer;user-select:none;white-space:nowrap}
+    .sortable-th:hover{color:#D71920}
+    .sort-indicator{font-size:11px;color:#D71920;margin-left:4px;font-weight:950}
     .login-overlay{position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#111116 0%,#2B0D0F 55%,#D71920 145%);display:flex;align-items:center;justify-content:center;padding:24px}
     .login-box{width:100%;max-width:430px;background:#fff;border-radius:28px;padding:30px;box-shadow:0 30px 80px rgba(0,0,0,.28)}
     .login-input{width:100%;border:1px solid #e5e7eb;border-radius:16px;padding:14px 16px;margin-top:8px;font-size:16px}
@@ -64,6 +67,14 @@
     .login-error{display:none;color:#b91c1c;background:#fef2f2;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:700;margin-top:12px}
     .pill{display:inline-flex;align-items:center;justify-content:center;padding:7px 12px;border-radius:999px;background:#FFF1F2;color:#B91C1C;font-size:12px;font-weight:950;white-space:nowrap}
     canvas{max-width:100%}
+
+    .ops-heatmap{display:grid;grid-template-columns:80px repeat(18,minmax(34px,1fr));gap:6px;align-items:stretch;overflow-x:auto;padding-bottom:4px}
+    .ops-heatmap-cell{min-height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;border:1px solid rgba(215,25,32,.08)}
+    .ops-heatmap-head{background:#F8FAFC;color:#475569}
+    .ops-heatmap-rowlabel{background:#111827;color:#fff;position:sticky;left:0;z-index:1}
+    .ops-heatmap-val{background:rgba(215,25,32,var(--alpha));color:#7F1D1D}
+    .ops-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid #FECACA;background:#FFF1F2;color:#991B1B;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:950}
+
     @media(max-width:1100px){
       .app-shell{grid-template-columns:1fr}
       .sidebar{position:relative;height:auto;flex-direction:row;align-items:center;overflow-x:auto;padding:14px}
@@ -141,6 +152,7 @@ logo.png
         <button class="tab" data-tab="ptss"><span class="ico">▣</span><span>PT Sessions</span></button>
         <button class="tab" data-tab="guest"><span class="ico">◇</span><span>Guest Sources</span></button>
         <button class="tab" data-tab="club"><span class="ico">▤</span><span>Club Ranking</span></button>
+        <button class="tab" data-tab="operations"><span class="ico">◈</span><span>Operations</span></button>
         <button class="tab" data-tab="ai"><span class="ico">✦</span><span>AI Insights</span></button>
       </nav>
       <div class="sidebar-footer">Commercial dashboard powered by CSV data, same-day comparison and target tracking.</div>
@@ -285,6 +297,142 @@ logo.png
         <div class="card p-5 lg:col-span-3"><div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3 mb-4"><div><div class="mini-label">Club Detail</div><h2 class="text-xl font-black">Club Performance Table</h2></div><input id="searchClub" placeholder="Search club..." class="border border-gray-200 rounded-xl px-4 py-2" /></div><div class="overflow-x-auto"><table class="w-full text-sm"><thead class="text-left text-gray-500 border-b"><tr><th class="py-3">Club</th><th>Region</th><th>Membership</th><th>PT Sales</th><th>Cash Total</th><th>vs LM</th><th>PTSS</th><th>Guest</th><th>NMU</th><th>Close Rate</th><th>Status</th></tr></thead><tbody id="clubTable"></tbody></table></div></div>
       </section>
 
+
+      <section id="operations" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+            <div>
+              <div class="mini-label">Operations · Class Attendance</div>
+              <h2 class="text-2xl font-black">Class Attendance Analytics</h2>
+              <p class="text-sm text-gray-500 mt-1">Live class.csv mapped view. All charts use selected Period / View / Day cutoff; Last Month comparisons use the same cutoff day, not full month.</p>
+            </div>
+            <div class="flex flex-wrap gap-2" id="opsSummaryChips"></div>
+          </div>
+        </div>
+
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Attendance Trend</div>
+              <h2 class="text-xl font-black">Class Attendance Trend</h2>
+              <p class="text-xs text-gray-400 mt-1">Bar = selected period. Line = last month same-day comparison.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Current vs LM</span>
+          </div>
+          <canvas id="opsAttendanceTrendChart" height="95"></canvas>
+        </div>
+
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Club View</div>
+              <h2 class="text-xl font-black">Attendance by Club & Class Mix</h2>
+              <p class="text-xs text-gray-400 mt-1">Stacked bars show attendance count by class name for every active club. Line shows last month attendance using the same cutoff day from the selected filter, not full month.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">All Active Clubs</span>
+          </div>
+          <canvas id="opsClubChart" height="135"></canvas>
+        </div>
+        <div class="card p-5 lg:col-span-3">
+          <div class="mini-label">Operations Signal</div>
+          <h2 class="text-xl font-black mb-4">Focus Areas</h2>
+          <div id="opsFocusList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3"></div>
+        </div>
+
+        <div class="card p-5 lg:col-span-2">
+          <div class="mini-label">Class Portfolio</div>
+          <h2 class="text-xl font-black mb-4">Attendance Count by Class Name</h2>
+          <canvas id="opsClassChart" height="155"></canvas>
+        </div>
+        <div class="card p-5">
+          <div class="mini-label">Capacity Quality</div>
+          <h2 class="text-xl font-black mb-4">Occupancy Mix</h2>
+          <canvas id="opsOccupancyChart" height="190"></canvas>
+        </div>
+
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Instructor Productivity</div>
+              <h2 class="text-xl font-black">Attendance by Instructor</h2>
+              <p class="text-xs text-gray-400 mt-1">Vertical ranked chart. Bar = current attendance. Line = last month same-day. Use Top / Bottom view to handle 200–300 instructors without breaking the chart.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-extrabold text-gray-400 uppercase tracking-wider">View</label>
+              <select id="opsInstructorView" class="border border-gray-200 rounded-xl px-3 py-2 bg-white text-sm font-bold min-w-[150px]">
+                <option value="TOP20">Top 20</option>
+                <option value="TOP50">Top 50</option>
+                <option value="BOTTOM20">Bottom 20</option>
+              </select>
+            </div>
+          </div>
+          <canvas id="opsInstructorChart" height="135"></canvas>
+          <div id="opsInstructorNote" class="text-xs text-gray-400 mt-3"></div>
+        </div>
+
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Class Efficiency</div>
+              <h2 class="text-xl font-black">Class Efficiency Table</h2>
+              <p class="text-xs text-gray-400 mt-1">Replaces scatter. Shows which classes need action based on attendance, utilization, number of classes and average attendance per class.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Attendance + Utilization</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500 border-b">
+                <tr>
+                  <th class="py-3">Class</th>
+                  <th>Attendance</th>
+                  <th>Utilization</th>
+                  <th># Classes</th>
+                  <th>Avg / Class</th>
+                  <th>vs LM</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="opsEfficiencyTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card p-5 lg:col-span-3">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-4">
+            <div>
+              <div class="mini-label">Timetable Heatmap</div>
+              <h2 class="text-xl font-black">Attendance by Day & Hour</h2>
+              <p class="text-xs text-gray-400 mt-1">Darker cells = higher attendance. Hours follow operating logic: weekday 6–23, weekend 8–22.</p>
+            </div>
+            <span class="px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold">Peak Hour View</span>
+          </div>
+          <div id="opsHeatmap" class="ops-heatmap"></div>
+        </div>
+
+        <div class="card p-5 lg:col-span-3">
+          <div class="mini-label">Detail Table</div>
+          <h2 class="text-xl font-black mb-4">Class / Instructor / Club Detail</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-left text-gray-500 border-b">
+                <tr id="opsDetailHeader">
+                  <th class="py-3 sortable-th" data-sort="rank">Rank<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="className">Class<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="instructor">Instructor<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="club">Club<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="classes">Classes<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="attendance">Attendance<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="capacity">Capacity<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="util">Utilization<span class="sort-indicator"></span></th>
+                  <th class="sortable-th" data-sort="signalText">Signal<span class="sort-indicator"></span></th>
+                </tr>
+              </thead>
+              <tbody id="opsDetailTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <section id="ai" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="card p-5 lg:col-span-3">
           <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
@@ -351,6 +499,9 @@ const CONFIG = {
   GUEST_CSV_URL: './guest.csv',
   GUEST_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/guest.csv',
 
+  CLASS_CSV_URL: './class.csv',
+  CLASS_CSV_URL_FALLBACK: 'https://raw.githubusercontent.com/dtchien401/Dashboard-test/main/class.csv',
+
   GUEST_JSON_URL: './Guest.json',
   GUEST_JSON_URL_FALLBACK: 'https://dtchien401.github.io/Dashboard-test/Guest.json'
 };
@@ -361,6 +512,9 @@ let allData = [];
 let data = [];
 let targetData = [];
 let guestData = [];
+let classData = [];
+let classDataStatus = 'Not loaded';
+let opsDetailSort = { key: 'attendance', dir: 'desc', clickCount: 1 }; // desc, asc, reset
 const CLOSED_CLUBS = ['VMC','LTC','TDY','JCQ','JVJ','CVC','SCC','PPC','TC1','FIN SERVE','CA360'];
 
 const fallbackRawData = [
@@ -1511,6 +1665,7 @@ async function loadData(){
   setStatus('Loading CSV data...');
   await loadTargetData();
   await loadGuestData();
+  await loadClassData();
 
   try{
     const result = await fetchTextFromUrls(
@@ -2580,16 +2735,547 @@ function renderAiInsights(rows){
   byId('aiTrendInsights').innerHTML = trendBoxes.join('');
 }
 
+
+
+function parseMonthNameToNumber(v){
+  const s = String(v || '').trim().toLowerCase().slice(0,3);
+  const map = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+  return map[s] || Number(v) || 0;
+}
+function normalizeClassMonth(yearValue, monthValue, dateValue){
+  const y = Number(yearValue);
+  const m = parseMonthNameToNumber(monthValue);
+  if(y && m) return y + '-' + String(m).padStart(2,'0');
+  const raw = String(dateValue || '').trim();
+  const d = new Date(raw);
+  if(raw && !isNaN(d.getTime())) return getLocalMonthString(d);
+  return '';
+}
+function parseClassPercent(v){
+  const s = String(v || '').replace('%','').trim();
+  const n = Number(s);
+  if(!Number.isFinite(n)) return 0;
+  return n > 1 ? n / 100 : n;
+}
+function normalizeClassRow(row){
+  const year = row.Year_class || row.year_class || row.Year || row.year;
+  const monthName = row.Month_class || row.month_class || row.Month || row.month;
+  const dateRaw = row.class_start_date || row.date || row.Date || '';
+  const month = normalizeClassMonth(year, monthName, dateRaw);
+  const day = Number(row.Day_class || row.day_class || row.Day || row.day || 0);
+  const club = String(row.club_code || row.Club || row.club || '').trim().toUpperCase();
+  const className = String(row.Class || row.class_name || row.className || row.class || '').trim() || 'Unknown Class';
+  const instructor = String(row.trainer_name || row.Instructor || row.instructor || '').trim() || 'Unknown Instructor';
+  const classCode = String(row.class_code || row.classCode || '').trim() || 'Unknown';
+  const hour = Number(row.class_hour || row.hour || row.Hour || 0);
+  const seat = safeNumber(row.number_seat || row.capacity || row.seat || row.Seat);
+  const usage = safeNumber(row.number_usage || row.attendance || row.usage || row.Usage);
+
+  if(!month || !club || !day || day < 1 || day > 31) return null;
+  if(!Number.isFinite(hour) || hour < 0 || hour > 24) return null;
+
+  let weekday = '';
+  const d = new Date(String(dateRaw || '').replace(' 0:00',''));
+  if(!isNaN(d.getTime())){
+    weekday = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  }else{
+    const parts = month.split('-').map(Number);
+    const fallbackDate = new Date(parts[0], parts[1]-1, day);
+    weekday = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][fallbackDate.getDay()];
+  }
+
+  return {
+    month,
+    day,
+    date: dateRaw || month + '-' + String(day).padStart(2,'0'),
+    weekday,
+    hour,
+    club,
+    classCode,
+    className,
+    instructor,
+    classes:1,
+    seat,
+    usage,
+    util: seat ? usage / seat : parseClassPercent(row.utilisation_rate || row.utilization || row.Utilization)
+  };
+}
+async function loadClassData(){
+  try{
+    const result = await fetchTextFromUrls(
+      [CONFIG.CLASS_CSV_URL, CONFIG.CLASS_CSV_URL_FALLBACK],
+      'class.csv'
+    );
+    const csvRows = parseCsvText(result.text);
+    classData = csvRows.map(normalizeClassRow).filter(Boolean).filter(r=>!CLOSED_CLUBS.includes(String(r.club).toUpperCase()));
+    if(!classData.length){
+      throw new Error('class.csv returned 0 usable rows. Required columns: Year_class, Month_class, Day_class, class_start_date, class_hour, Class, trainer_name, club_code, number_seat, number_usage.');
+    }
+    const months = Array.from(new Set(classData.map(r=>r.month))).sort();
+    const clubs = Array.from(new Set(classData.map(r=>r.club))).sort();
+    const instructors = Array.from(new Set(classData.map(r=>r.instructor))).length;
+    classDataStatus = 'class.csv loaded: ' + classData.length.toLocaleString() + ' rows | ' + months.length + ' periods | ' + clubs.length + ' active clubs | ' + instructors + ' instructors | source: ' + result.url;
+    console.log(classDataStatus, classData.slice(0,3));
+  }catch(err){
+    console.warn('Class CSV not loaded. Operations will use demo rows:', err);
+    classData = [];
+    classDataStatus = 'class.csv failed. Upload class.csv to the same GitHub folder as index.html. Details: ' + (err.message || err);
+  }
+}
+
+/* =========================
+   OPERATIONS TAB - STEP 4
+   class.csv mapped from real sample. Uses demo fallback if class.csv is unavailable.
+========================= */
+function opsMonthOffset(month, offset){
+  if(!month || month === 'ALL') return month;
+  const parts = String(month).split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1 + offset, 1);
+  return getLocalMonthString(d);
+}
+function opsHash(str){
+  let h = 0;
+  String(str || '').split('').forEach(ch=>{ h = ((h << 5) - h) + ch.charCodeAt(0); h |= 0; });
+  return Math.abs(h);
+}
+function generateOperationsDemoRows(month){
+  const selectedMonth = month && month !== 'ALL' ? month : (getPeriod() !== 'ALL' ? getPeriod() : '2026-05');
+  const [year,mm] = String(selectedMonth).split('-').map(Number);
+  const classNames = ['YOGA','ZUMBA','DANCE','BODY PUMP','BODY COMBAT','CYCLING','PILATES','STRETCH','ABS CORE','CLASSICAL','MOVE','HIIT'];
+  const instructors = ['LANA','LILY','RICO','SANTOSH','ANNA','MIKE','JENNY','DAVID','KELLY','NICK','MIA','TOM'];
+  const clubUniverse = Array.from(new Set((allData.length ? allData : mapFallbackData()).map(r=>String(r.club).toUpperCase())))
+    .filter(c=>c && !CLOSED_CLUBS.includes(c))
+    .slice(0,31);
+  const days = daysInMonth(selectedMonth);
+  const rows = [];
+  clubUniverse.forEach((club,clubIdx)=>{
+    classNames.forEach((cls,clsIdx)=>{
+      for(let d=1; d<=days; d++){
+        const date = new Date(year, mm - 1, d);
+        const weekday = date.getDay();
+        const isWeekend = weekday === 0 || weekday === 6;
+        const slots = isWeekend ? [8,9,10,16,17,18,19,20] : [6,7,8,12,17,18,19,20,21];
+        const hour = slots[(d + clsIdx + clubIdx) % slots.length];
+        if(((d + clsIdx + clubIdx) % 3) === 0) continue;
+        const seat = 28 + ((clsIdx + clubIdx) % 5) * 4;
+        const peakBoost = (hour >= 17 && hour <= 20) ? 1.35 : (hour >= 6 && hour <= 8 ? 1.1 : 0.82);
+        const classBoost = ['YOGA','ZUMBA','BODY PUMP','CYCLING'].includes(cls) ? 1.18 : 0.92;
+        const clubBoost = 0.82 + ((opsHash(club) % 55) / 100);
+        const rawUsage = Math.round(seat * peakBoost * classBoost * clubBoost * (0.58 + ((d % 7) * 0.045)));
+        const usage = Math.max(3, Math.min(Math.round(seat * 1.08), rawUsage));
+        rows.push({
+          month:selectedMonth,
+          day:d,
+          date:selectedMonth + '-' + String(d).padStart(2,'0'),
+          weekday:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][weekday],
+          hour,
+          club,
+          className:cls,
+          instructor:instructors[(clsIdx + clubIdx + d) % instructors.length],
+          classes:1,
+          seat,
+          usage,
+          util: seat ? usage / seat : 0
+        });
+      }
+    });
+  });
+  return rows;
+}
+function getOperationsRows(month){
+  const targetMonth = month || getPeriod();
+  const sourceRows = classData && classData.length ? classData : generateOperationsDemoRows(targetMonth);
+  const club = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
+  const periodRows = targetMonth === 'ALL' ? sourceRows : sourceRows.filter(r=>r.month === targetMonth);
+  return periodRows.filter(r =>
+    (club === 'ALL' || r.club === club) &&
+    !CLOSED_CLUBS.includes(String(r.club || '').toUpperCase())
+  );
+}
+function opsCutoffDayForSelectedPeriod(){
+  const period = getPeriod();
+  if(!period || period === 'ALL') return 31;
+  return getEffectiveCutoffDay(period);
+}
+function opsRowsCurrent(){
+  const period = getPeriod();
+  const day = opsCutoffDayForSelectedPeriod();
+  return getOperationsRows(period).filter(r => getViewMode() === 'DAILY' ? Number(r.day) === day : Number(r.day) <= day);
+}
+function opsRowsLastMonth(){
+  const period = getPeriod();
+  if(!period || period === 'ALL') return [];
+  const lm = opsMonthOffset(period, -1);
+
+  // IMPORTANT: Month-on-month comparison must use the SAME cutoff day as the current filter.
+  // Example: if May is filtered to MTD D19, April line should include only Apr D1-D19, not full April.
+  const cutoff = Math.min(opsCutoffDayForSelectedPeriod(), daysInMonth(lm));
+
+  return getOperationsRows(lm).filter(r => getViewMode() === 'DAILY' ? Number(r.day) === cutoff : Number(r.day) <= cutoff);
+}
+function opsAggregate(rows, key){
+  const map = {};
+  rows.forEach(r=>{
+    const k = r[key] || 'Unknown';
+    if(!map[k]) map[k] = {name:k, classes:0, attendance:0, capacity:0, util:0};
+    map[k].classes += 1;
+    map[k].attendance += safeNumber(r.usage);
+    map[k].capacity += safeNumber(r.seat);
+  });
+  return Object.values(map).map(x=>{
+    x.util = x.capacity ? x.attendance / x.capacity : 0;
+    return x;
+  }).sort((a,b)=>b.attendance - a.attendance);
+}
+function opsBadge(text, tone){
+  const cls = tone === 'good' ? 'badge-up' : tone === 'bad' ? 'badge-down' : 'badge-neutral';
+  return '<span class="'+cls+' px-2 py-1 rounded-full text-xs font-bold">'+text+'</span>';
+}
+function renderOperations(){
+  const rows = opsRowsCurrent();
+  const lmRows = opsRowsLastMonth();
+  const attendance = sum(rows,'usage');
+  const capacity = sum(rows,'seat');
+  const classes = rows.length;
+  const util = capacity ? attendance / capacity : 0;
+  const lmAttendance = sum(lmRows,'usage');
+  const change = comparePct(attendance,lmAttendance);
+
+  if(byId('opsSummaryChips')){
+    byId('opsSummaryChips').innerHTML = [
+      '<span class="ops-chip">Attendance: '+Math.round(attendance).toLocaleString()+'</span>',
+      '<span class="ops-chip">Classes: '+classes.toLocaleString()+'</span>',
+      '<span class="ops-chip">Utilization: '+pct(util)+'</span>',
+      '<span class="ops-chip">'+(change === null ? 'No LM' : ((change>=0?'▲ ':'▼ ')+pct(Math.abs(change))+' vs LM'))+'</span>'
+    ].join('');
+  }
+
+  renderOpsTrend(rows,lmRows);
+  renderOpsClub(rows,lmRows);
+  renderOpsClass(rows);
+  renderOpsInstructor(rows,lmRows);
+  renderOpsOccupancy(rows);
+  renderOpsEfficiency(rows,lmRows);
+  renderOpsHeatmap(rows);
+  renderOpsFocus(rows,lmRows);
+  renderOpsDetail(rows);
+}
+function renderOpsTrend(rows,lmRows){
+  const period = getPeriod();
+  const cutoff = opsCutoffDayForSelectedPeriod();
+
+  // In MTD view: show D1 → selected cutoff day.
+  // In DAILY view: show only the selected day so the chart does not imply a full trend.
+  const dayNumbers = getViewMode() === 'DAILY' ? [cutoff] : Array.from({length:cutoff},(_,i)=>i+1);
+  const labels = dayNumbers.map(d=>'D'+d);
+
+  // lmRows is already filtered by opsRowsLastMonth() to the SAME cutoff day as current filter.
+  // Example: May MTD D19 vs Apr MTD D19, not full April.
+  const cur = dayNumbers.map(d=>rows.filter(r=>Number(r.day)===d).reduce((a,b)=>a+safeNumber(b.usage),0));
+  const lm = dayNumbers.map(d=>lmRows.filter(r=>Number(r.day)===d).reduce((a,b)=>a+safeNumber(b.usage),0));
+
+  drawChart('opsAttendanceTrendChart',{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:getViewMode() === 'DAILY' ? 'Attendance Selected Day' : 'Attendance MTD',data:cur,borderWidth:1,borderRadius:8},
+      {label:getViewMode() === 'DAILY' ? 'Last Month Same Day' : 'Last Month Same Cutoff',data:lm,type:'line',tension:.35,borderWidth:3,pointRadius:2}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}
+  });
+}
+function operationsActiveClubs(){
+  const revenueClubs = Array.from(new Set((allData.length ? allData : mapFallbackData()).map(r=>String(r.club || '').trim().toUpperCase())));
+  const classClubs = Array.from(new Set((classData || []).map(r=>String(r.club || '').trim().toUpperCase())));
+  return Array.from(new Set(revenueClubs.concat(classClubs)))
+    .filter(c=>c && !CLOSED_CLUBS.includes(c))
+    .sort((a,b)=>a.localeCompare(b));
+}
+function renderOpsClub(rows,lmRows){
+  const clubs = operationsActiveClubs();
+  const selectedClub = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
+  const labels = selectedClub === 'ALL' ? clubs : clubs.filter(c=>c === selectedClub);
+  const lmLabel = getViewMode() === 'DAILY' ? ('Last Month D' + opsCutoffDayForSelectedPeriod()) : ('Last Month MTD D' + opsCutoffDayForSelectedPeriod());
+
+  const classTotals = opsAggregate(rows,'className');
+  const topClassNames = classTotals.slice(0,10).map(x=>x.name);
+  const hasOther = classTotals.length > topClassNames.length;
+  const classBuckets = hasOther ? topClassNames.concat(['Others']) : topClassNames;
+
+  const grouped = {};
+  rows.forEach(r=>{
+    const club = String(r.club || '').trim().toUpperCase();
+    if(!labels.includes(club)) return;
+    const cls = topClassNames.includes(r.className) ? r.className : 'Others';
+    const key = club + '|' + cls;
+    grouped[key] = (grouped[key] || 0) + safeNumber(r.usage);
+  });
+
+  const lmByClub = Object.fromEntries(opsAggregate(lmRows,'club').map(x=>[String(x.name).toUpperCase(),x.attendance]));
+  const datasets = classBuckets.map(cls=>({
+    label:cls,
+    data:labels.map(club=>grouped[club+'|'+cls] || 0),
+    borderWidth:1,
+    borderRadius:4,
+    stack:'classMix'
+  }));
+  datasets.push({
+    label:lmLabel,
+    data:labels.map(club=>lmByClub[club] || 0),
+    type:'line',
+    tension:.28,
+    borderWidth:3,
+    pointRadius:2,
+    yAxisID:'y'
+  });
+
+  drawChart('opsClubChart',{
+    type:'bar',
+    data:{labels,datasets},
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom',labels:{boxWidth:12,usePointStyle:true}},
+        tooltip:{mode:'index',intersect:false}
+      },
+      scales:{
+        x:{stacked:true,grid:{display:false},ticks:{autoSkip:false,maxRotation:60,minRotation:45}},
+        y:{stacked:true,beginAtZero:true}
+      }
+    }
+  });
+}
+function renderOpsClass(rows){
+  const arr = opsAggregate(rows,'className').slice(0,12);
+  drawChart('opsClassChart',{
+    type:'bar',
+    data:{labels:arr.map(x=>x.name),datasets:[
+      {label:'Attendance',data:arr.map(x=>x.attendance),borderRadius:8},
+      {label:'Utilization %',data:arr.map(x=>+(x.util*100).toFixed(1)),type:'line',yAxisID:'y1',tension:.25,borderWidth:3,pointRadius:2}
+    ]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}
+  });
+}
+function renderOpsInstructor(rows,lmRows){
+  const all = opsAggregate(rows,'instructor');
+  const lmMap = Object.fromEntries(opsAggregate(lmRows || [],'instructor').map(x=>[x.name,x.attendance]));
+  const totalAttendance = all.reduce((a,b)=>a + safeNumber(b.attendance),0);
+  const view = byId('opsInstructorView') ? byId('opsInstructorView').value : 'TOP20';
+  let selected = [];
+  if(view === 'TOP50') selected = all.slice(0,50);
+  else if(view === 'BOTTOM20') selected = all.slice().reverse().slice(0,20).reverse();
+  else selected = all.slice(0,20);
+
+  const maxRotation = selected.length > 24 ? 70 : 45;
+  drawChart('opsInstructorChart',{
+    type:'bar',
+    data:{labels:selected.map(x=>x.name),datasets:[
+      {label:'Attendance',data:selected.map(x=>Math.round(x.attendance)),borderRadius:8},
+      {label:'Last Month',data:selected.map(x=>Math.round(lmMap[x.name] || 0)),type:'line',tension:.25,borderWidth:3,pointRadius:2}
+    ]},
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'bottom'},
+        tooltip:{callbacks:{afterLabel:function(ctx){
+          const item = selected[ctx.dataIndex];
+          if(!item) return '';
+          return 'Classes: '+item.classes.toLocaleString()+' | Avg/Class: '+(item.classes ? (item.attendance/item.classes).toFixed(1) : '0.0')+' | Util: '+pct(item.util);
+        }}}
+      },
+      scales:{
+        y:{beginAtZero:true},
+        x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:maxRotation,minRotation:maxRotation}}
+      }
+    }
+  });
+
+  if(byId('opsInstructorNote')){
+    const shownAttendance = selected.reduce((a,b)=>a + safeNumber(b.attendance),0);
+    const share = totalAttendance ? shownAttendance / totalAttendance : 0;
+    const top20Share = totalAttendance ? all.slice(0,20).reduce((a,b)=>a + safeNumber(b.attendance),0) / totalAttendance : 0;
+    const othersShare = Math.max(0,1-top20Share);
+    byId('opsInstructorNote').textContent = 'Showing '+selected.length+' / '+all.length+' instructors · displayed share '+pct(share)+' · Top 20 share '+pct(top20Share)+' · Others '+pct(othersShare)+'.';
+  }
+}
+function renderOpsOccupancy(rows){
+  const buckets = [
+    {name:'0-40%',min:0,max:.4,count:0},
+    {name:'40-60%',min:.4,max:.6,count:0},
+    {name:'60-80%',min:.6,max:.8,count:0},
+    {name:'80-100%',min:.8,max:1,count:0},
+    {name:'100%+',min:1,max:99,count:0}
+  ];
+  rows.forEach(r=>{
+    const u = safeNumber(r.util);
+    const b = buckets.find(x=>u>=x.min && u<x.max) || buckets[buckets.length-1];
+    b.count += 1;
+  });
+  drawChart('opsOccupancyChart',{
+    type:'doughnut',
+    data:{labels:buckets.map(x=>x.name),datasets:[{label:'Classes',data:buckets.map(x=>x.count)}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom'}}}
+  });
+}
+function opsEfficiencyAction(x){
+  if(x.util >= .9 && x.attendance >= 1500) return {text:'Expand',tone:'good'};
+  if(x.util >= .75) return {text:'Keep / Monitor',tone:'neutral'};
+  if(x.util < .6) return {text:'Review',tone:'bad'};
+  return {text:'Optimize',tone:'neutral'};
+}
+function renderOpsEfficiency(rows,lmRows){
+  const lmMap = Object.fromEntries(opsAggregate(lmRows || [],'className').map(x=>[x.name,x.attendance]));
+  const arr = opsAggregate(rows,'className').slice(0,18);
+  if(byId('opsEfficiencyTable')){
+    byId('opsEfficiencyTable').innerHTML = arr.map(x=>{
+      const lm = lmMap[x.name] || 0;
+      const ch = comparePct(x.attendance,lm);
+      const avg = x.classes ? x.attendance / x.classes : 0;
+      const action = opsEfficiencyAction(x);
+      const delta = ch === null ? '<span class="text-gray-400">No LM</span>' : '<span class="'+(ch>=0?'text-emerald-700':'text-rose-700')+' font-black">'+(ch>=0?'▲ ':'▼ ')+pct(Math.abs(ch))+'</span>';
+      return '<tr class="border-b table-row"><td class="py-3 font-black">'+x.name+'</td><td>'+Math.round(x.attendance).toLocaleString()+'</td><td>'+pct(x.util)+'</td><td>'+x.classes.toLocaleString()+'</td><td>'+avg.toFixed(1)+'</td><td>'+delta+'</td><td>'+opsBadge(action.text,action.tone)+'</td></tr>';
+    }).join('');
+  }
+}
+function renderOpsHeatmap(rows){
+  const el = byId('opsHeatmap');
+  if(!el) return;
+  const hours = Array.from({length:18},(_,i)=>i+6);
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const map = {};
+  let max = 1;
+  rows.forEach(r=>{
+    const key = r.weekday+'|'+r.hour;
+    map[key] = (map[key] || 0) + r.usage;
+    max = Math.max(max,map[key]);
+  });
+  let html = '<div class="ops-heatmap-cell ops-heatmap-head">Day</div>' + hours.map(h=>'<div class="ops-heatmap-cell ops-heatmap-head">'+h+'</div>').join('');
+  days.forEach(day=>{
+    html += '<div class="ops-heatmap-cell ops-heatmap-rowlabel">'+day+'</div>';
+    hours.forEach(h=>{
+      const val = map[day+'|'+h] || 0;
+      const alpha = Math.max(.05, Math.min(.9, val / max));
+      html += '<div class="ops-heatmap-cell ops-heatmap-val" style="--alpha:'+alpha.toFixed(2)+'">'+(val?Math.round(val):'')+'</div>';
+    });
+  });
+  el.innerHTML = html;
+}
+function renderOpsFocus(rows,lmRows){
+  const club = opsAggregate(rows,'club');
+  const cls = opsAggregate(rows,'className');
+  const inst = opsAggregate(rows,'instructor');
+  const lowUtil = cls.slice().sort((a,b)=>a.util-b.util)[0];
+  const topClub = club[0];
+  const topClass = cls[0];
+  const topInstructor = inst[0];
+  const lm = sum(lmRows,'usage');
+  const cur = sum(rows,'usage');
+  const change = comparePct(cur,lm);
+  if(byId('opsFocusList')){
+    byId('opsFocusList').innerHTML = [
+      '<div class="p-4 rounded-2xl bg-gray-50 h-full"><div class="font-black">Total Attendance</div><div class="text-sm text-gray-500 mt-1">'+Math.round(cur).toLocaleString()+' attendees '+(change===null?'':' · '+(change>=0?'▲ ':'▼ ')+pct(Math.abs(change))+' vs LM')+'</div></div>',
+      '<div class="p-4 rounded-2xl bg-gray-50 h-full"><div class="font-black">Top Club</div><div class="text-sm text-gray-500 mt-1">'+(topClub?topClub.name:'-')+' · '+(topClub?Math.round(topClub.attendance).toLocaleString():0)+' attendees</div></div>',
+      '<div class="p-4 rounded-2xl bg-gray-50 h-full"><div class="font-black">Top Class</div><div class="text-sm text-gray-500 mt-1">'+(topClass?topClass.name:'-')+' · '+(topClass?pct(topClass.util):'0.0%')+' util.</div></div>',
+      '<div class="p-4 rounded-2xl bg-gray-50 h-full"><div class="font-black">Watch Low Occupancy</div><div class="text-sm text-gray-500 mt-1">'+(lowUtil?lowUtil.name:'-')+' · '+(lowUtil?pct(lowUtil.util):'0.0%')+'</div></div>',
+      '<div class="p-4 rounded-2xl bg-gray-50 h-full"><div class="font-black">Top Instructor</div><div class="text-sm text-gray-500 mt-1">'+(topInstructor?topInstructor.name:'-')+' · '+(topInstructor?Math.round(topInstructor.attendance).toLocaleString():0)+' attendees</div></div>'
+    ].join('');
+  }
+}
+function opsSignalForUtil(util){
+  if(util >= .85) return {text:'Expand', level:'good', order:4};
+  if(util < .45) return {text:'Review', level:'bad', order:1};
+  if(util < .65) return {text:'Monitor', level:'warn', order:2};
+  return {text:'Healthy', level:'neutral', order:3};
+}
+function renderOpsDetailSortIndicators(){
+  const header = byId('opsDetailHeader');
+  if(!header) return;
+  header.querySelectorAll('.sort-indicator').forEach(x=>x.textContent='');
+  if(!opsDetailSort || opsDetailSort.dir === 'reset') return;
+  const th = header.querySelector('[data-sort="'+opsDetailSort.key+'"] .sort-indicator');
+  if(th) th.textContent = opsDetailSort.dir === 'asc' ? '↑' : '↓';
+}
+function setupOpsDetailSortableHeaders(){
+  const header = byId('opsDetailHeader');
+  if(!header || header.dataset.bound === '1') return;
+  header.dataset.bound = '1';
+  header.querySelectorAll('[data-sort]').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.sort;
+      if(!opsDetailSort || opsDetailSort.key !== key){
+        opsDetailSort = {key, dir:'desc', clickCount:1};
+      }else if(opsDetailSort.dir === 'desc'){
+        opsDetailSort = {key, dir:'asc', clickCount:2};
+      }else if(opsDetailSort.dir === 'asc'){
+        opsDetailSort = {key:'attendance', dir:'reset', clickCount:3};
+      }else{
+        opsDetailSort = {key, dir:'desc', clickCount:1};
+      }
+      if(activeTab === 'operations') renderOperations();
+    });
+  });
+  renderOpsDetailSortIndicators();
+}
+function renderOpsDetail(rows){
+  const grouped = {};
+  rows.forEach(r=>{
+    const key = r.className+'|'+r.instructor+'|'+r.club;
+    if(!grouped[key]) grouped[key] = {className:r.className,instructor:r.instructor,club:r.club,classes:0,attendance:0,capacity:0};
+    grouped[key].classes += 1;
+    grouped[key].attendance += r.usage;
+    grouped[key].capacity += r.seat;
+  });
+  let arr = Object.values(grouped).map(x=>{
+    x.util = x.capacity ? x.attendance / x.capacity : 0;
+    const sig = opsSignalForUtil(x.util);
+    x.signalText = sig.text;
+    x.signalOrder = sig.order;
+    return x;
+  }).sort((a,b)=>b.attendance-a.attendance);
+  arr.forEach((x,i)=>x.rank=i+1);
+
+  if(opsDetailSort && opsDetailSort.dir !== 'reset'){
+    const key = opsDetailSort.key;
+    const dir = opsDetailSort.dir === 'asc' ? 1 : -1;
+    arr.sort((a,b)=>{
+      let av = key === 'signalText' ? a.signalOrder : a[key];
+      let bv = key === 'signalText' ? b.signalOrder : b[key];
+      if(typeof av === 'string' || typeof bv === 'string'){
+        return String(av||'').localeCompare(String(bv||'')) * dir;
+      }
+      return (safeNumber(av) - safeNumber(bv)) * dir;
+    });
+  }
+  arr = arr.slice(0,50);
+
+  if(byId('opsDetailTable')){
+    byId('opsDetailTable').innerHTML = arr.map((x,i)=>{
+      const sig = opsSignalForUtil(x.util);
+      const signal = opsBadge(sig.text, sig.level);
+      return '<tr class="border-b table-row"><td class="py-3 font-black">'+x.rank+'</td><td class="font-bold">'+x.className+'</td><td>'+x.instructor+'</td><td>'+x.club+'</td><td>'+x.classes+'</td><td>'+Math.round(x.attendance).toLocaleString()+'</td><td>'+Math.round(x.capacity).toLocaleString()+'</td><td>'+pct(x.util)+'</td><td>'+signal+'</td></tr>';
+    }).join('');
+  }
+  renderOpsDetailSortIndicators();
+}
+
 function renderDashboard(){
   const rows=getFiltered();
-  renderCards(rows);
+
+  // Operations is an operational view, so hide the commercial KPI cards.
+  if(byId('kpiCards')) byId('kpiCards').style.display = activeTab === 'operations' ? 'none' : '';
+
+  if(activeTab !== 'operations') renderCards(rows);
+
   if(activeTab === 'cash') renderCash(rows);
   if(activeTab === 'ptss') renderPtss(rows);
   if(activeTab === 'guest') renderGuest(rows);
   if(activeTab === 'club') renderRanking(rows);
+  if(activeTab === 'operations') renderOperations();
   if(activeTab === 'ai') renderAiInsights(rows);
 
-  if(byId('compareFilter') && byId('compareFilter').value === 'TARGET' && byId('dataStatus')){
+  if(activeTab === 'operations' && byId('dataStatus')){
+    const matched = opsRowsCurrent().length;
+    byId('dataStatus').textContent = classDataStatus + ' | matched current view: ' + matched.toLocaleString() + ' class sessions';
+  }else if(byId('compareFilter') && byId('compareFilter').value === 'TARGET' && byId('dataStatus')){
     byId('dataStatus').textContent = targetDebugText();
   }else if(activeTab === 'guest' && byId('dataStatus')){
     const matched = guestRowsForCurrentFilter();
@@ -2688,10 +3374,20 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   setupLogin();
   await loadData();
   setupFilters();
+  setupOpsDetailSortableHeaders();
   applyAccessControl();
   renderDashboard();
   runSelfTests();
 });
+// Operations instructor view selector
+setTimeout(function(){
+  const sel = byId('opsInstructorView');
+  if(sel && !sel.dataset.bound){
+    sel.dataset.bound = '1';
+    sel.addEventListener('change', function(){ if(activeTab === 'operations') renderOperations(); });
+  }
+},0);
+
 </script>
 </body>
 </html>
