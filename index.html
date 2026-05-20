@@ -152,7 +152,7 @@ logo.png
         <button class="tab" data-tab="ptss"><span class="ico">▣</span><span>PT Sessions</span></button>
         <button class="tab" data-tab="guest"><span class="ico">◇</span><span>Guest Sources</span></button>
         <button class="tab" data-tab="club"><span class="ico">▤</span><span>Club Ranking</span></button>
-        <button class="tab" data-tab="operations"><span class="ico">◈</span><span>Operations</span></button>
+        <button class="tab" data-tab="Class Attendance"><span class="ico">◈</span><span>Class Attendance</span></button>
         <button class="tab" data-tab="checkin"><span class="ico">◎</span><span>Check-in</span></button>
         <button class="tab" data-tab="ai"><span class="ico">✦</span><span>AI Insights</span></button>
       </nav>
@@ -299,11 +299,11 @@ logo.png
       </section>
 
 
-      <section id="operations" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <section id="Class Attendance" class="tabPanel hidden grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div class="card p-5 lg:col-span-3">
           <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div>
-              <div class="mini-label">Operations · Class Attendance</div>
+              <div class="mini-label">Class Attendance · Class Attendance</div>
               <h2 class="text-2xl font-black">Class Attendance Analytics</h2>
               <p class="text-sm text-gray-500 mt-1">Live class.csv mapped view. All charts use selected Period / View / Day cutoff; Last Month comparisons use the same cutoff day, not full month.</p>
             </div>
@@ -335,7 +335,7 @@ logo.png
           <canvas id="opsClubChart" height="135"></canvas>
         </div>
         <div class="card p-5 lg:col-span-3">
-          <div class="mini-label">Operations Signal</div>
+          <div class="mini-label">Class Attendance Signal</div>
           <h2 class="text-xl font-black mb-4">Focus Areas</h2>
           <div id="opsFocusList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3"></div>
         </div>
@@ -439,7 +439,7 @@ logo.png
         <div class="card p-5 lg:col-span-3">
           <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div>
-              <div class="mini-label">Operations · Member Traffic</div>
+              <div class="mini-label">Class Attendance · Member Traffic</div>
               <h2 class="text-2xl font-black">Check-in Analytics</h2>
               <p class="text-sm text-gray-500 mt-1">Mapped from checkin.csv. Total check-ins show traffic. Towel / Drink / Parking / Swim show member privilege profile within that traffic, not sales attach rate.</p>
             </div>
@@ -2902,14 +2902,14 @@ async function loadClassData(){
     classDataStatus = 'class.csv loaded: ' + classData.length.toLocaleString() + ' rows | ' + months.length + ' periods | ' + clubs.length + ' active clubs | ' + instructors + ' instructors | source: ' + result.url;
     console.log(classDataStatus, classData.slice(0,3));
   }catch(err){
-    console.warn('Class CSV not loaded. Operations will use demo rows:', err);
+    console.warn('Class CSV not loaded. Class Attendance will use demo rows:', err);
     classData = [];
     classDataStatus = 'class.csv failed. Upload class.csv to the same GitHub folder as index.html. Details: ' + (err.message || err);
   }
 }
 
 /* =========================
-   OPERATIONS TAB - STEP 4
+   Class Attendance TAB - STEP 4
    class.csv mapped from real sample. Uses demo fallback if class.csv is unavailable.
 ========================= */
 function opsMonthOffset(month, offset){
@@ -2923,7 +2923,7 @@ function opsHash(str){
   String(str || '').split('').forEach(ch=>{ h = ((h << 5) - h) + ch.charCodeAt(0); h |= 0; });
   return Math.abs(h);
 }
-function generateOperationsDemoRows(month){
+function generateClass AttendanceDemoRows(month){
   const selectedMonth = month && month !== 'ALL' ? month : (getPeriod() !== 'ALL' ? getPeriod() : '2026-05');
   const [year,mm] = String(selectedMonth).split('-').map(Number);
   const classNames = ['YOGA','ZUMBA','DANCE','BODY PUMP','BODY COMBAT','CYCLING','PILATES','STRETCH','ABS CORE','CLASSICAL','MOVE','HIIT'];
@@ -2967,9 +2967,9 @@ function generateOperationsDemoRows(month){
   });
   return rows;
 }
-function getOperationsRows(month){
+function getClass AttendanceRows(month){
   const targetMonth = month || getPeriod();
-  const sourceRows = classData && classData.length ? classData : generateOperationsDemoRows(targetMonth);
+  const sourceRows = classData && classData.length ? classData : generateClass AttendanceDemoRows(targetMonth);
   const club = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
   const periodRows = targetMonth === 'ALL' ? sourceRows : sourceRows.filter(r=>r.month === targetMonth);
   return periodRows.filter(r =>
@@ -2985,7 +2985,7 @@ function opsCutoffDayForSelectedPeriod(){
 function opsRowsCurrent(){
   const period = getPeriod();
   const day = opsCutoffDayForSelectedPeriod();
-  return getOperationsRows(period).filter(r => getViewMode() === 'DAILY' ? Number(r.day) === day : Number(r.day) <= day);
+  return getClass AttendanceRows(period).filter(r => getViewMode() === 'DAILY' ? Number(r.day) === day : Number(r.day) <= day);
 }
 function opsRowsLastMonth(){
   const period = getPeriod();
@@ -2996,7 +2996,7 @@ function opsRowsLastMonth(){
   // Example: if May is filtered to MTD D19, April line should include only Apr D1-D19, not full April.
   const cutoff = Math.min(opsCutoffDayForSelectedPeriod(), daysInMonth(lm));
 
-  return getOperationsRows(lm).filter(r => getViewMode() === 'DAILY' ? Number(r.day) === cutoff : Number(r.day) <= cutoff);
+  return getClass AttendanceRows(lm).filter(r => getViewMode() === 'DAILY' ? Number(r.day) === cutoff : Number(r.day) <= cutoff);
 }
 function opsAggregate(rows, key){
   const map = {};
@@ -3016,7 +3016,7 @@ function opsBadge(text, tone){
   const cls = tone === 'good' ? 'badge-up' : tone === 'bad' ? 'badge-down' : 'badge-neutral';
   return '<span class="'+cls+' px-2 py-1 rounded-full text-xs font-bold">'+text+'</span>';
 }
-function renderOperations(){
+function renderClass Attendance(){
   const rows = opsRowsCurrent();
   const lmRows = opsRowsLastMonth();
   const attendance = sum(rows,'usage');
@@ -3068,7 +3068,7 @@ function renderOpsTrend(rows,lmRows){
     options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}
   });
 }
-function operationsActiveClubs(){
+function Class AttendanceActiveClubs(){
   const revenueClubs = Array.from(new Set((allData.length ? allData : mapFallbackData()).map(r=>String(r.club || '').trim().toUpperCase())));
   const classClubs = Array.from(new Set((classData || []).map(r=>String(r.club || '').trim().toUpperCase())));
   return Array.from(new Set(revenueClubs.concat(classClubs)))
@@ -3076,7 +3076,7 @@ function operationsActiveClubs(){
     .sort((a,b)=>a.localeCompare(b));
 }
 function renderOpsClub(rows,lmRows){
-  const clubs = operationsActiveClubs();
+  const clubs = Class AttendanceActiveClubs();
   const selectedClub = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
   const labels = selectedClub === 'ALL' ? clubs : clubs.filter(c=>c === selectedClub);
   const lmLabel = getViewMode() === 'DAILY' ? ('Last Month D' + opsCutoffDayForSelectedPeriod()) : ('Last Month MTD D' + opsCutoffDayForSelectedPeriod());
@@ -3295,7 +3295,7 @@ function setupOpsDetailSortableHeaders(){
       }else{
         opsDetailSort = {key, dir:'desc', clickCount:1};
       }
-      if(activeTab === 'operations') renderOperations();
+      if(activeTab === 'Class Attendance') renderClass Attendance();
     });
   });
   renderOpsDetailSortIndicators();
@@ -3450,7 +3450,7 @@ function renderCheckinHour(rows,lmRows){
   ]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true},x:{grid:{display:false}}}}});
 }
 function renderCheckinClub(rows,lmRows){
-  const clubs = operationsActiveClubs();
+  const clubs = Class AttendanceActiveClubs();
   const selectedClub = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
   const labels = selectedClub === 'ALL' ? clubs : clubs.filter(c=>c===selectedClub);
   const cur = Object.fromEntries(checkinAgg(rows,'club').map(x=>[x.name,x.total]));
@@ -3464,7 +3464,7 @@ function renderCheckinBenefit(rows){
   const selectedClub = byId('clubFilter') ? byId('clubFilter').value : 'ALL';
   const aggArr = checkinAgg(rows,'club').filter(x=>!CLOSED_CLUBS.includes(String(x.name).trim().toUpperCase()));
   const aggMap = Object.fromEntries(aggArr.map(x=>[x.name,x]));
-  const baseClubs = operationsActiveClubs().filter(c=>!CLOSED_CLUBS.includes(String(c).trim().toUpperCase()));
+  const baseClubs = Class AttendanceActiveClubs().filter(c=>!CLOSED_CLUBS.includes(String(c).trim().toUpperCase()));
   let labels = selectedClub === 'ALL' ? baseClubs : baseClubs.filter(c=>c===selectedClub);
 
   // Keep all active clubs visible, but order by current check-in traffic so the most important clubs are easier to read.
@@ -3565,20 +3565,20 @@ function renderCheckinPeak(rows){
 function renderDashboard(){
   const rows=getFiltered();
 
-  // Operations is an operational view, so hide the commercial KPI cards.
-  if(byId('kpiCards')) byId('kpiCards').style.display = (activeTab === 'operations' || activeTab === 'checkin') ? 'none' : '';
+  // Class Attendance is an operational view, so hide the commercial KPI cards.
+  if(byId('kpiCards')) byId('kpiCards').style.display = (activeTab === 'Class Attendance' || activeTab === 'checkin') ? 'none' : '';
 
-  if(activeTab !== 'operations' && activeTab !== 'checkin') renderCards(rows);
+  if(activeTab !== 'Class Attendance' && activeTab !== 'checkin') renderCards(rows);
 
   if(activeTab === 'cash') renderCash(rows);
   if(activeTab === 'ptss') renderPtss(rows);
   if(activeTab === 'guest') renderGuest(rows);
   if(activeTab === 'club') renderRanking(rows);
-  if(activeTab === 'operations') renderOperations();
+  if(activeTab === 'Class Attendance') renderClass Attendance();
   if(activeTab === 'checkin') renderCheckin();
   if(activeTab === 'ai') renderAiInsights(rows);
 
-  if(activeTab === 'operations' && byId('dataStatus')){
+  if(activeTab === 'Class Attendance' && byId('dataStatus')){
     const matched = opsRowsCurrent().length;
     byId('dataStatus').textContent = classDataStatus + ' | matched current view: ' + matched.toLocaleString() + ' class sessions';
   }else if(activeTab === 'checkin' && byId('dataStatus')){
@@ -3688,12 +3688,12 @@ document.addEventListener('DOMContentLoaded', async ()=>{
   renderDashboard();
   runSelfTests();
 });
-// Operations instructor view selector
+// Class Attendance instructor view selector
 setTimeout(function(){
   const sel = byId('opsInstructorView');
   if(sel && !sel.dataset.bound){
     sel.dataset.bound = '1';
-    sel.addEventListener('change', function(){ if(activeTab === 'operations') renderOperations(); });
+    sel.addEventListener('change', function(){ if(activeTab === 'Class Attendance') renderClass Attendance(); });
   }
 },0);
 
