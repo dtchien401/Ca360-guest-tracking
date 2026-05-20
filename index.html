@@ -152,7 +152,7 @@ logo.png
         <button class="tab" data-tab="ptss"><span class="ico">▣</span><span>PT Sessions</span></button>
         <button class="tab" data-tab="guest"><span class="ico">◇</span><span>Guest Sources</span></button>
         <button class="tab" data-tab="club"><span class="ico">▤</span><span>Club Ranking</span></button>
-        <button class="tab" data-tab="operations"><span class="ico">◈</span><span>Operations</span></button>
+        <button class="tab" data-tab="operations"><span class="ico">🏋️</span><span>Class Attendance</span></button>
         <button class="tab" data-tab="checkin"><span class="ico">◎</span><span>Check-in</span></button>
         <button class="tab" data-tab="ai"><span class="ico">✦</span><span>AI Insights</span></button>
       </nav>
@@ -303,8 +303,8 @@ logo.png
         <div class="card p-5 lg:col-span-3">
           <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
             <div>
-              <div class="mini-label">Operations · Class Attendance</div>
-              <h2 class="text-2xl font-black">Class Attendance Analytics</h2>
+              <div class="mini-label">Class Attendance</div>
+              <h2 class="text-2xl font-black">Class Attendance</h2>
               <p class="text-sm text-gray-500 mt-1">Live class.csv mapped view. All charts use selected Period / View / Day cutoff; Last Month comparisons use the same cutoff day, not full month.</p>
             </div>
             <div class="flex flex-wrap gap-2" id="opsSummaryChips"></div>
@@ -335,7 +335,7 @@ logo.png
           <canvas id="opsClubChart" height="135"></canvas>
         </div>
         <div class="card p-5 lg:col-span-3">
-          <div class="mini-label">Operations Signal</div>
+          <div class="mini-label">Class Attendance Signal</div>
           <h2 class="text-xl font-black mb-4">Focus Areas</h2>
           <div id="opsFocusList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3"></div>
         </div>
@@ -2902,7 +2902,7 @@ async function loadClassData(){
     classDataStatus = 'class.csv loaded: ' + classData.length.toLocaleString() + ' rows | ' + months.length + ' periods | ' + clubs.length + ' active clubs | ' + instructors + ' instructors | source: ' + result.url;
     console.log(classDataStatus, classData.slice(0,3));
   }catch(err){
-    console.warn('Class CSV not loaded. Operations will use demo rows:', err);
+    console.warn('Class CSV not loaded. Class Attendance will use demo rows:', err);
     classData = [];
     classDataStatus = 'class.csv failed. Upload class.csv to the same GitHub folder as index.html. Details: ' + (err.message || err);
   }
@@ -3565,7 +3565,7 @@ function renderCheckinPeak(rows){
 function renderDashboard(){
   const rows=getFiltered();
 
-  // Operations is an operational view, so hide the commercial KPI cards.
+  // Class Attendance is an operational view, so hide the commercial KPI cards.
   if(byId('kpiCards')) byId('kpiCards').style.display = (activeTab === 'operations' || activeTab === 'checkin') ? 'none' : '';
 
   if(activeTab !== 'operations' && activeTab !== 'checkin') renderCards(rows);
